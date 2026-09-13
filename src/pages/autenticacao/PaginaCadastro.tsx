@@ -415,7 +415,6 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         }
 
         const respostaRegistro = await registrar({
-          // Campo `id` é obrigatório no RegistroRequestDTO — UUID gerado no frontend
           id: gerarUuid(),
           nome: limparTexto(nomeCompleto),
           email: normalizarEmail(email),
@@ -423,7 +422,10 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
           senha,
         });
 
-        definirSessao(respostaRegistro.accessToken, {
+         const tokenValido = respostaRegistro.accessToken || respostaRegistro.token || '';
+        localStorage.setItem('@nhac:token', tokenValido);
+
+        definirSessao(tokenValido, {
           id: respostaRegistro.usuarioId ?? email,
           nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
           email,
@@ -433,7 +435,12 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         limparEmailVerificado();
       }
 
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       await criarLoja(montarPayloadLoja());
+      
+      await new Promise(resolve => setTimeout(resolve, 600));
+
       await recarregarLoja();
 
       if (modo === 'apenas-loja') {
@@ -460,6 +467,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       setCarregando(false);
     }
   };
+
 
   const handleVerificacaoConcluida = () => {
     setEtapaAtual(indices.LOJA);
