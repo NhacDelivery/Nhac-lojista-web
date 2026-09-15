@@ -9,7 +9,7 @@ import estilos from './PaginaCadastro.module.css';
 import { Botao, InputTexto, Seletor, Toggle, Checkbox, IndicadorEtapas, Cartao } from '../../components/ui';
 import { mascaraTelefone, mascaraCep, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
 import { CATEGORIAS_LOJA } from '../../dados/categorias';
-import { registrar, criarLoja, buscarCep as apiBuscarCep, enviarCodigoCadastro, checarEmail } from '../../services/api';
+import { registrar, criarLoja, buscarCep as apiBuscarCep, enviarCodigoCadastro, checarEmail, enviarImagem } from '../../services/api';
 import VerificacaoEmail from '../../components/autenticacao/VerificacaoEmail';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
 import { useLoja } from '../../contexts/LojaContext';
@@ -41,6 +41,7 @@ import {
   normalizarEmail,
   soDigitos,
   gerarUuid,
+  validarArquivoImagem,
 } from '../../validators';
 
 const ETAPAS_COMPLETO = [
@@ -136,6 +137,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
 
   // Etapa 1 — Dados da Loja (antiga etapa 2)
   const [fotoUrl, setFotoUrl] = useState('');
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nomeLoja, setNomeLoja] = useState('');
   const [descricaoLoja, setDescricaoLoja] = useState('');
@@ -422,9 +424,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
           senha,
         });
 
-         const tokenValido = respostaRegistro.accessToken || respostaRegistro.token || '';
-        localStorage.setItem('@nhac:token', tokenValido);
-
+        // definirSessao já persiste o token em '@nhac:token' — não duplicar.
+        const tokenValido = respostaRegistro.accessToken || respostaRegistro.token || '';
         definirSessao(tokenValido, {
           id: respostaRegistro.usuarioId ?? email,
           nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
@@ -435,12 +436,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         limparEmailVerificado();
       }
 
-      await new Promise(resolve => setTimeout(resolve, 100));
-
       await criarLoja(montarPayloadLoja());
-      
-      await new Promise(resolve => setTimeout(resolve, 600));
-
       await recarregarLoja();
 
       if (modo === 'apenas-loja') {
@@ -474,11 +470,34 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     window.scrollTo(0, 0);
   };
 
-  const lidarComArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const url = URL.createObjectURL(e.target.files[0]);
+  /**
+   * Sobe a logo para o Firebase Storage via POST /uploads/imagem (pasta
+   * "lojas") e guarda a URL PERSISTENTE devolvida pelo backend. Antes era
+   * usado URL.createObjectURL(), que gera uma URL local (blob:) — ela não
+   * sobrevive ao fim da sessão e nunca chegava ao servidor.
+   */
+  const lidarComArquivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!arquivo) return;
+
+    // Mesmas regras do backend: JPG/PNG/WEBP até 5 MB.
+    const erroArquivo = validarArquivoImagem(arquivo);
+    if (erroArquivo) {
+      setErros((prev) => ({ ...prev, imagemUrl: erroArquivo }));
+      return;
+    }
+
+    setEnviandoLogo(true);
+    try {
+      const url = await enviarImagem(arquivo, 'lojas');
       setFotoUrl(url);
       setErros((prev) => { const n = { ...prev }; delete n.imagemUrl; return n; });
+    } catch (err) {
+      const tratado = tratarErroApi(err);
+      setErros((prev) => ({ ...prev, imagemUrl: tratado.mensagemGeral ?? 'Não foi possível enviar a imagem.' }));
+    } finally {
+      setEnviandoLogo(false);
     }
   };
 
@@ -661,9 +680,11 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 <span className={estilos.rotuloTextarea}>Logo da Loja</span>
                 <div 
                   className={estilos.uploadArea} 
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => { if (!enviandoLogo) fileInputRef.current?.click(); }}
                 >
-                  {fotoUrl ? (
+                  {enviandoLogo ? (
+                    <span>Enviando imagem...</span>
+                  ) : fotoUrl ? (
                     <img src={fotoUrl} alt="Logo" className={estilos.previewImagem} />
                   ) : (
                     <>
@@ -679,6 +700,11 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                     style={{ display: 'none' }}
                   />
                 </div>
+                {erros.imagemUrl && (
+                  <span style={{ color: 'var(--nhac-erro, #e53935)', fontSize: '0.8125rem' }}>
+                    {erros.imagemUrl}
+                  </span>
+                )}
               </div>
               
                 <InputTexto

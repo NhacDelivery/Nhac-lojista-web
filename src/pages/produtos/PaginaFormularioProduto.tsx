@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import InputTexto from '../../components/ui/InputTexto';
@@ -14,9 +14,11 @@ import {
   criarProduto,
   atualizarProduto,
   desativarProduto,
+  enviarImagem,
   ProdutoLojistaDTO,
   GrupoAdicionalDTO,
 } from '../../services/api';
+import { useToast } from '../../contexts/ToastContext';
 import {
   validarNomeProduto,
   validarDescricaoProduto,
@@ -25,12 +27,16 @@ import {
   validarFormulario,
   parsePreco,
   limparTexto,
+  validarEstoque,
+  validarArquivoImagem,
 } from '../../validators';
+import { tratarErroApi } from '../../utils/errosApi';
 import estilos from './PaginaFormularioProduto.module.css';
 
 const PaginaFormularioProduto = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { mostrarToast } = useToast();
   const ehEdicao = !!id && id !== 'novo';
 
   const [nome, setNome] = useState('');
@@ -40,12 +46,20 @@ const PaginaFormularioProduto = () => {
   const [ativo, setAtivo] = useState(true);
   const [fotoUrl, setFotoUrl] = useState('');
   const [adicionais, setAdicionais] = useState<GrupoAdicionalDTO[]>([]);
+  // Campos que não têm input nesta tela, mas fazem parte do ProdutoLojistaDTO.
+  // Precisam ser preservados no PUT — se ficassem de fora do payload, o
+  // backend sobrescreveria peso/desconto/estoque com null.
+  const [peso, setPeso] = useState<string>('');
+  const [percentualDesconto, setPercentualDesconto] = useState<string>('');
+  const [estoque, setEstoque] = useState<string>('');
   const [modalExcluirAberto, setModalExcluirAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [errosTocados, setErrosTocados] = useState<Record<string, boolean>>({});
+  const arquivoInputRef = useRef<HTMLInputElement>(null);
 
   // Erro exibido por campo: on blur ou on submit — nunca on change
   const erroCampo = (campo: string): string | undefined =>
@@ -90,12 +104,48 @@ const PaginaFormularioProduto = () => {
       setAtivo(produto.ativo);
       setFotoUrl(produto.imagemUrl || '');
       setAdicionais(produto.adicionais || []);
+      setPeso(produto.peso != null ? String(produto.peso) : '');
+      setPercentualDesconto(
+        produto.percentualDesconto != null ? String(produto.percentualDesconto) : ''
+      );
+      setEstoque(produto.estoque != null ? String(produto.estoque) : '');
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro ao carregar produto');
     } finally {
       setCarregando(false);
     }
   }, [id]);
+
+  /**
+   * Sobe a imagem para o Firebase Storage via POST /uploads/imagem e guarda a
+   * URL persistente devolvida pelo backend. Antes desta integração nenhuma
+   * imagem era enviada (só existia a área visual de upload).
+   */
+  const handleSelecionarImagem = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    // Permite reselecionar o mesmo arquivo depois de um erro
+    e.target.value = '';
+    if (!arquivo) return;
+
+    // Mesmas regras do backend: JPG/PNG/WEBP até 5 MB (evita request inútil).
+    const erroArquivo = validarArquivoImagem(arquivo);
+    if (erroArquivo) {
+      setErro(erroArquivo);
+      return;
+    }
+
+    setErro(null);
+    setEnviandoImagem(true);
+    try {
+      const url = await enviarImagem(arquivo, 'produtos');
+      setFotoUrl(url);
+    } catch (err) {
+      const tratado = tratarErroApi(err);
+      setErro(tratado.mensagemGeral ?? 'Não foi possível enviar a imagem.');
+    } finally {
+      setEnviandoImagem(false);
+    }
+  };
 
   useEffect(() => {
     if (ehEdicao) {
@@ -124,18 +174,24 @@ const PaginaFormularioProduto = () => {
         imagemUrl: fotoUrl || undefined,
         ativo,
         adicionais: adicionais.length > 0 ? adicionais : undefined,
+        // Campos sem input nesta tela: reenviados como vieram do backend para
+        // o PUT não zerá-los (o DTO aceita `peso` string e estoque absoluto).
+        peso: peso || undefined,
+        percentualDesconto: percentualDesconto ? Number(percentualDesconto) : undefined,
+        estoque: estoque !== '' ? Number(estoque) : undefined,
       };
 
       if (ehEdicao && id) {
         await atualizarProduto(id, dadosProduto);
-        alert('Produto atualizado com sucesso!');
+        mostrarToast('Produto atualizado com sucesso!');
       } else {
         await criarProduto(dadosProduto);
-        alert('Produto criado com sucesso!');
+        mostrarToast('Produto criado com sucesso!');
       }
       navigate('/produtos');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao salvar produto');
+      const tratado = tratarErroApi(err);
+      setErro(tratado.mensagemGeral ?? 'Erro ao salvar produto.');
     } finally {
       // Após erro de rede/backend, reabilitar o botão para permitir retry
       setSalvando(false);
@@ -147,8 +203,9 @@ const PaginaFormularioProduto = () => {
       if (!id) return;
       await desativarProduto(id);
       navigate('/produtos');
-    } catch {
-      alert('Erro ao excluir produto');
+    } catch (err) {
+      const tratado = tratarErroApi(err);
+      mostrarToast(tratado.mensagemGeral ?? 'Erro ao excluir produto.');
     }
   };
 
@@ -182,15 +239,54 @@ const PaginaFormularioProduto = () => {
               
               <div className={estilos.uploadWrapper}>
                 <span className={estilos.rotulo}>Foto do Produto</span>
-                <div className={estilos.areaUpload}>
-                  <Upload size={32} color="var(--nhac-primaria)" />
-                  <p>Clique ou arraste uma imagem aqui</p>
+                <div
+                  className={estilos.areaUpload}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => arquivoInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') arquivoInputRef.current?.click();
+                  }}
+                >
+                  {fotoUrl ? (
+                    <img src={fotoUrl} alt={nome || 'Imagem do produto'} style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8 }} />
+                  ) : (
+                    <>
+                      <Upload size={32} color="var(--nhac-primaria)" />
+                      <p>{enviandoImagem ? 'Enviando imagem...' : 'Clique para enviar uma imagem'}</p>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    ref={arquivoInputRef}
+                    onChange={handleSelecionarImagem}
+                    style={{ display: 'none' }}
+                  />
                 </div>
+                {fotoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFotoUrl('')}
+                    style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--nhac-erro, #e53935)', cursor: 'pointer', fontSize: '0.8125rem' }}
+                  >
+                    Remover imagem
+                  </button>
+                )}
               </div>
 
               <div className={estilos.toggleWrapper}>
                 <Toggle ativo={ativo} aoMudar={setAtivo} rotulo="Produto Ativo" />
               </div>
+
+              <InputTexto
+                rotulo="Estoque (unidades)"
+                valor={estoque}
+                aoMudar={(v) => setEstoque(v.replace(/\D/g, ''))}
+                placeholder="Ex.: 100"
+                erro={erroCampo('estoque')}
+                onBlur={() => tocarCampo('estoque', estoque, validarEstoque)}
+              />
             </div>
           </Cartao>
 

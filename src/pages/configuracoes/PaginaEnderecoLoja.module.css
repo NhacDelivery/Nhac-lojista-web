@@ -40,6 +40,12 @@
   font-weight: 500;
 }
 
+.erro {
+  font-size: 0.875rem;
+  color: var(--nhac-erro, #e53935);
+  font-weight: 500;
+}
+
 @media (max-width: 480px) {
   .grid2 {
     grid-template-columns: 1fr;

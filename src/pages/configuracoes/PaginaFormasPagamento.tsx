@@ -4,35 +4,77 @@ import LayoutPagina from '../../components/layout/LayoutPagina';
 import Checkbox from '../../components/ui/Checkbox';
 import Botao from '../../components/ui/Botao';
 import { Banknote, CreditCard, Smartphone, Utensils, ShoppingBag } from 'lucide-react';
+import { useLoja } from '../../contexts/LojaContext';
+import { atualizarLoja } from '../../services/api';
+import { tratarErroApi } from '../../utils/errosApi';
+import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaFormasPagamento.module.css';
+
+/**
+ * Mapeia as 6 flags do backend (FormasPagamentoDTO) para os ids usados na UI.
+ * O PUT /lojas/{id} exige o payload completo, então a tela carrega os valores
+ * REAIS de GET /lojas/minha-loja e devolve só `formasPagamento` alterado.
+ */
+type ChavePagamento = 'dinheiro' | 'credito' | 'debito' | 'pix' | 'refeicao' | 'alimentacao';
 
 const PaginaFormasPagamento = () => {
   const navigate = useNavigate();
-  const [pagamentos, setPagamentos] = useState({
-    dinheiro: true,
-    credito: true,
-    debito: true,
-    pix: true,
-    refeicao: false,
-    alimentacao: false,
+  const { loja, recarregar } = useLoja();
+  const { mostrarToast } = useToast();
+
+  const formas = loja?.formasPagamento;
+  const [pagamentos, setPagamentos] = useState<Record<ChavePagamento, boolean>>({
+    dinheiro: formas?.aceitaDinheiro ?? false,
+    credito: formas?.aceitaCredito ?? false,
+    debito: formas?.aceitaDebito ?? false,
+    pix: formas?.aceitaPix ?? false,
+    refeicao: formas?.aceitaValeRefeicao ?? false,
+    alimentacao: formas?.aceitaValeAlimentacao ?? false,
   });
 
-  const [salvo, setSalvo] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
 
-  const toggle = (chave: keyof typeof pagamentos) => {
+  const toggle = (chave: ChavePagamento) => {
     setPagamentos(prev => ({ ...prev, [chave]: !prev[chave] }));
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     const selecionado = Object.values(pagamentos).some(v => v);
     if (!selecionado) {
       setErro('Selecione pelo menos uma forma de pagamento');
       return;
     }
     setErro('');
-    setSalvo(true);
-    setTimeout(() => setSalvo(false), 2000);
+
+    if (!loja?.id) {
+      setErro('Loja não carregada. Recarregue a página e tente novamente.');
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      const { id, ...lojaSemId } = loja;
+      await atualizarLoja(id, {
+        ...lojaSemId,
+        formasPagamento: {
+          aceitaDinheiro: pagamentos.dinheiro,
+          aceitaCredito: pagamentos.credito,
+          aceitaDebito: pagamentos.debito,
+          aceitaPix: pagamentos.pix,
+          aceitaValeRefeicao: pagamentos.refeicao,
+          aceitaValeAlimentacao: pagamentos.alimentacao,
+        },
+      });
+      await recarregar();
+      mostrarToast('Formas de pagamento salvas!');
+      navigate('/configuracoes');
+    } catch (err) {
+      const tratado = tratarErroApi(err);
+      setErro(tratado.mensagemGeral ?? 'Não foi possível salvar as formas de pagamento.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const opcoes = [
@@ -70,11 +112,10 @@ const PaginaFormasPagamento = () => {
         </div>
 
         <div className={estilos.acoes}>
-          {salvo && <span className={estilos.sucessoMsg}>✓ Formas de pagamento salvas!</span>}
           <Botao variante="fantasma" onClick={() => navigate('/configuracoes')}>
             Cancelar
           </Botao>
-          <Botao variante="primario" onClick={handleSalvar}>
+          <Botao variante="primario" carregando={salvando} onClick={handleSalvar}>
             Salvar
           </Botao>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Cartao from '../../components/ui/Cartao';
@@ -7,37 +7,68 @@ import Seletor from '../../components/ui/Seletor';
 import Botao from '../../components/ui/Botao';
 import { MapPin } from 'lucide-react';
 import { mascaraCep, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
-import { lojaMock } from '../../dados/loja';
+import { useLoja } from '../../contexts/LojaContext';
+import { atualizarLoja, buscarCep as apiBuscarCep } from '../../services/api';
+import { tratarErroApi } from '../../utils/errosApi';
+import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaEnderecoLoja.module.css';
 
 const PaginaEnderecoLoja = () => {
   const navigate = useNavigate();
-  const [cep, setCep] = useState(lojaMock.endereco?.cep || '');
-  const [rua, setRua] = useState(lojaMock.endereco?.rua || '');
-  const [numero, setNumero] = useState(lojaMock.endereco?.numero || '');
-  const [complemento, setComplemento] = useState(lojaMock.endereco?.complemento || '');
-  const [bairro, setBairro] = useState(lojaMock.endereco?.bairro || '');
-  const [cidade, setCidade] = useState(lojaMock.endereco?.cidade || '');
-  const [uf, setUf] = useState(lojaMock.endereco?.uf || '');
+  const { loja, recarregar } = useLoja();
+  const { mostrarToast } = useToast();
+
+  const [cep, setCep] = useState('');
+  const [rua, setRua] = useState('');
+  const [numero, setNumero] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [uf, setUf] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [erros, setErros] = useState<Record<string, string>>({});
-  const [salvo, setSalvo] = useState(false);
+  const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
-  const buscarCep = (valorCep: string) => {
+  // Preenche o formulário com o endereço REAL da loja (GET /lojas/minha-loja).
+  useEffect(() => {
+    const endereco = loja?.endereco;
+    if (!endereco) return;
+    setCep(mascaraCep(endereco.cep || ''));
+    setRua(endereco.rua || '');
+    setNumero(endereco.numero || '');
+    setComplemento(endereco.complemento || '');
+    setBairro(endereco.bairro || '');
+    setCidade(endereco.cidade || '');
+    // O backend usa `estado` (LojaDetalhesDTO.EnderecoDTO), não `uf`.
+    setUf(endereco.estado || '');
+  }, [loja]);
+
+  /** Consulta o ViaCEP usando o helper do api.ts (mesmo do cadastro). */
+  const buscarCep = async (valorCep: string) => {
     const cepLimpo = valorCep.replace(/\D/g, '');
-    if (cepLimpo.length === 8) {
-      setBuscandoCep(true);
-      setTimeout(() => {
-        setRua('Rua das Flores');
-        setBairro('Bairro Centro');
-        setCidade('São Paulo');
-        setUf('SP');
-        setBuscandoCep(false);
-      }, 600);
+    if (cepLimpo.length !== 8) return;
+
+    setBuscandoCep(true);
+    setErros((prev) => {
+      const novos = { ...prev };
+      delete novos.cep;
+      return novos;
+    });
+    try {
+      const dados = await apiBuscarCep(cepLimpo);
+      setRua(dados.logradouro || '');
+      setBairro(dados.bairro || '');
+      setCidade(dados.localidade || '');
+      setUf(dados.uf || '');
+    } catch {
+      setErros((prev) => ({ ...prev, cep: 'CEP não encontrado' }));
+    } finally {
+      setBuscandoCep(false);
     }
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     const novosErros: Record<string, string> = {};
     if (!cep) novosErros.cep = 'CEP é obrigatório';
     if (!rua) novosErros.rua = 'Rua é obrigatória';
@@ -52,8 +83,38 @@ const PaginaEnderecoLoja = () => {
     }
 
     setErros({});
-    setSalvo(true);
-    setTimeout(() => setSalvo(false), 2000);
+    setErroGeral(null);
+    setSalvando(true);
+    try {
+      // PUT /lojas/{id} exige o payload COMPLETO (o backend não aceita
+      // parcial) — espalha a loja carregada e sobrescreve só o endereço.
+      const lojaAtual = loja;
+      if (!lojaAtual) {
+        setErroGeral('Loja não carregada. Recarregue a página e tente novamente.');
+        return;
+      }
+      const { id, ...lojaSemId } = lojaAtual;
+      await atualizarLoja(id, {
+        ...lojaSemId,
+        endereco: {
+          cep: cep.replace(/\D/g, ''),
+          rua,
+          numero,
+          complemento: complemento || undefined,
+          bairro,
+          cidade,
+          estado: uf,
+        },
+      });
+      await recarregar();
+      mostrarToast('Endereço salvo com sucesso!');
+      navigate('/configuracoes');
+    } catch (err) {
+      const tratado = tratarErroApi(err);
+      setErroGeral(tratado.mensagemGeral ?? 'Não foi possível salvar o endereço.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   return (
@@ -100,11 +161,11 @@ const PaginaEnderecoLoja = () => {
         </Cartao>
 
         <div className={estilos.acoes}>
-          {salvo && <span className={estilos.sucessoMsg}>✓ Endereço salvo com sucesso!</span>}
+          {erroGeral && <span className={estilos.erro}>{erroGeral}</span>}
           <Botao variante="fantasma" onClick={() => navigate('/configuracoes')}>
             Cancelar
           </Botao>
-          <Botao variante="primario" onClick={handleSalvar}>
+          <Botao variante="primario" carregando={salvando} onClick={handleSalvar}>
             Salvar endereço
           </Botao>
         </div>

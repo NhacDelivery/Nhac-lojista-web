@@ -5,7 +5,7 @@ import Cartao from '../../components/ui/Cartao';
 import Botao from '../../components/ui/Botao';
 import Emblema from '../../components/ui/Emblema';
 import Toggle from '../../components/ui/Toggle';
-import { buscarPainel, atualizarLoja, PainelResumoDTO } from '../../services/api';
+import { buscarPainel, atualizarAberturaLoja, PainelResumoDTO } from '../../services/api';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
 import { useLoja } from '../../contexts/LojaContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -51,17 +51,16 @@ const PaginaPainel = () => {
   };
 
   /**
-   * Antes, esse toggle era só estado local (nunca persistia). Agora chama
-   * PUT /lojas/{id} de verdade — precisa mandar a loja inteira (o backend
-   * não aceita payload parcial), por isso espalha `loja` antes de sobrescrever
-   * isAberto.
+   * Antes, esse toggle era só estado local (nunca persistia). Agora chama a
+   * rota dedicada PATCH /lojas/{id}/abertura — não precisa reenviar a loja
+   * inteira (diferente do PUT, que exige o payload completo e poderia
+   * sobrescrever dados se o contexto estivesse desatualizado).
    */
   const handleAlternarLojaAberta = async (novoValor: boolean) => {
     if (!loja) return;
     setAlterandoStatusLoja(true);
     try {
-      const { id, ...lojaSemId } = loja;
-      await atualizarLoja(id, { ...lojaSemId, isAberto: novoValor });
+      await atualizarAberturaLoja(loja.id, novoValor);
       await recarregarLoja();
       await carregarPainel();
     } catch (err) {

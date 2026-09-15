@@ -35,8 +35,13 @@ async function requisicao<T>(
 
   const token = localStorage.getItem('@nhac:token');
 
+  // Multipart (upload de imagem) NÃO pode receber Content-Type manual: o
+  // navegador precisa gerar o header com o boundary do FormData. Definir
+  // 'application/json' aqui faz o backend rejeitar o multipart.
+  const ehFormData = typeof FormData !== 'undefined' && opcoes.body instanceof FormData;
+
   const cabecalhos: HeadersInit = {
-    'Content-Type': 'application/json',
+    ...(ehFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Bearer ${token}` }),
   };
 
@@ -387,6 +392,19 @@ export async function atualizarLoja(id: string, dados: LojaCreateDTO): Promise<L
 }
 
 /**
+ * Abre/fecha a loja sem reenviar o cadastro completo.
+ * PATCH /lojas/{id}/abertura — body: { isAberto } (AtualizarAberturaDTO).
+ * Use esta rota no toggle do painel: PUT /lojas/{id} exige o payload inteiro
+ * e pode perder dados se algo estiver desatualizado no contexto.
+ */
+export async function atualizarAberturaLoja(id: string, isAberto: boolean): Promise<LojaResponseDTO> {
+  return requisicao<LojaResponseDTO>(`/lojas/${id}/abertura`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isAberto }),
+  });
+}
+
+/**
  * Calcula frete para um endereço
  * POST /lojas/{id}/calcular-frete
  */
@@ -411,6 +429,30 @@ export async function calcularFrete(
   });
 }
 
+// ==================== Uploads (Firebase Storage via backend) ====================
+
+/** Pastas aceitas pelo backend (UploadService.PASTAS_PERMITIDAS). */
+export type PastaUpload = 'lojas' | 'produtos';
+
+/**
+ * Envia uma imagem para o Firebase Storage e devolve a URL pública.
+ * POST /uploads/imagem — multipart/form-data: `arquivo` + `pasta`.
+ * 201 → { url }. 400: arquivo ausente, formato fora de JPEG/PNG/WEBP,
+ * acima do limite (5MB padrão) ou pasta inválida.
+ * A URL retornada é persistente — usar em `imagemUrl` de loja/produto.
+ */
+export async function enviarImagem(arquivo: File, pasta: PastaUpload): Promise<string> {
+  const dados = new FormData();
+  dados.append('arquivo', arquivo);
+  dados.append('pasta', pasta);
+
+  const resposta = await requisicao<{ url: string }>('/uploads/imagem', {
+    method: 'POST',
+    body: dados,
+  });
+  return resposta.url;
+}
+
 // ==================== Produtos ====================
 
 export interface PaginaSpring<T> {
@@ -428,7 +470,8 @@ export interface ProdutoLojistaDTO {
   preco: number;
   categoriaMenu: string;
   imagemUrl?: string;
-  peso?: number;
+  /** ProdutoLojistaDTO.peso é String no backend (ex.: "200g"), não número. */
+  peso?: string;
   percentualDesconto?: number;
   ativo: boolean;
   estoque?: number;
@@ -462,11 +505,14 @@ export async function listarProdutos(params?: { page?: number; size?: number }):
 }
 
 /**
- * Busca um produto específico por ID
- * GET /produtos/{id}
+ * Busca um produto específico por ID (visão do painel do lojista).
+ * GET /lojista/produtos/{produtoId} → ProdutoLojistaDTO.
+ * Importante: o endpoint público GET /produtos/{id} devolve ProdutoResumoDTO,
+ * que NÃO traz `ativo` nem `estoque` — usá-lo no formulário de edição apagava
+ * esses campos (produto voltava a ficar ativo/estoque zerado ao salvar).
  */
 export async function buscarProduto(id: string): Promise<ProdutoLojistaDTO> {
-  return requisicao<ProdutoLojistaDTO>(`/produtos/${id}`);
+  return requisicao<ProdutoLojistaDTO>(`/lojista/produtos/${id}`);
 }
 
 /**
@@ -508,6 +554,18 @@ export async function desativarProduto(id: string): Promise<void> {
 export async function ativarProduto(id: string): Promise<void> {
   return requisicao<void>(`/produtos/${id}/ativar`, {
     method: 'PATCH',
+  });
+}
+
+/**
+ * Atualiza a quantidade em estoque (reposição rápida).
+ * PATCH /produtos/{id}/estoque — body: { estoque } (AtualizarEstoqueDTO,
+ * valor ABSOLUTO e >= 0, não incremento).
+ */
+export async function atualizarEstoqueProduto(id: string, estoque: number): Promise<ProdutoLojistaDTO> {
+  return requisicao<ProdutoLojistaDTO>(`/produtos/${id}/estoque`, {
+    method: 'PATCH',
+    body: JSON.stringify({ estoque }),
   });
 }
 
@@ -687,6 +745,67 @@ export async function desativarFuncionario(id: string): Promise<void> {
 export async function reativarFuncionario(id: string): Promise<FuncionarioResponseDTO> {
   return requisicao<FuncionarioResponseDTO>(`/lojista/funcionarios/${id}/ativar`, {
     method: 'PATCH',
+  });
+}
+
+// ==================== Usuário (conta do lojista) ====================
+
+/**
+ * Dados editáveis da própria conta (UsuarioAtualizarDTO).
+ * Atualização PARCIAL: campos omitidos (undefined/null) não são alterados;
+ * o backend rejeita e-mail já usado por outra conta (400 REGRA_DE_NEGOCIO).
+ */
+export interface UsuarioAtualizarDTO {
+  nome?: string;
+  email?: string;
+  telefone?: string;
+  imagemUrl?: string;
+}
+
+/**
+ * Os 4 toggles de notificação da tela de configurações da conta
+ * (PreferenciasNotificacaoDTO — todos obrigatórios no PUT).
+ */
+export interface PreferenciasNotificacaoDTO {
+  notificarNovoPedido: boolean;
+  notificarMensagens: boolean;
+  notificarAvaliacoes: boolean;
+  notificarNovidades: boolean;
+}
+
+/**
+ * Atualiza dados da própria conta.
+ * PUT /usuarios/{id} — restrito ao dono. Responde LoginResponseDTO com um
+ * token NOVO (o papel pode ter mudado), por isso devolvemos `accessToken`
+ * para a UI renovar a sessão no localStorage.
+ */
+export async function atualizarUsuario(
+  id: string,
+  dados: UsuarioAtualizarDTO
+): Promise<LoginResponseDTO & { accessToken: string }> {
+  const resposta = await requisicao<LoginResponseDTO>(`/usuarios/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(dados),
+  });
+  return { ...resposta, accessToken: extrairToken(resposta) };
+}
+
+/** GET /usuarios/{id}/preferencias-notificacao (restrito ao dono) */
+export async function buscarPreferenciasNotificacao(id: string): Promise<PreferenciasNotificacaoDTO> {
+  return requisicao<PreferenciasNotificacaoDTO>(`/usuarios/${id}/preferencias-notificacao`);
+}
+
+/**
+ * Substitui as 4 preferências de notificação de uma vez.
+ * PUT /usuarios/{id}/preferencias-notificacao (restrito ao dono).
+ */
+export async function atualizarPreferenciasNotificacao(
+  id: string,
+  preferencias: PreferenciasNotificacaoDTO
+): Promise<PreferenciasNotificacaoDTO> {
+  return requisicao<PreferenciasNotificacaoDTO>(`/usuarios/${id}/preferencias-notificacao`, {
+    method: 'PUT',
+    body: JSON.stringify(preferencias),
   });
 }
 

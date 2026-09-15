@@ -368,6 +368,19 @@ export const validarPercentualDesconto: Validador = (valor) => {
   return null;
 };
 
+/**
+ * Estoque — backend AtualizarEstoqueDTO: @NotNull @PositiveOrZero.
+ * Vazio é aceito (no cadastro o backend assume o padrão; na edição o campo
+ * omitido mantém o valor atual).
+ */
+export const validarEstoque: Validador = (valor) => {
+  if (valor === '' || valor === null || valor === undefined) return null;
+  const numero = Number(valor);
+  if (Number.isNaN(numero) || !Number.isInteger(numero)) return 'Informe uma quantidade inteira de unidades.';
+  if (numero < 0) return 'O estoque não pode ser negativo.';
+  return null;
+};
+
 // ==================== Imagem (arquivo) ====================
 
 const FORMATOS_IMAGEM_ACEITOS = ['image/jpeg', 'image/png', 'image/webp'];

@@ -4,7 +4,7 @@ import LayoutPagina from '../../components/layout/LayoutPagina';
 import Cartao from '../../components/ui/Cartao';
 import Avatar from '../../components/ui/Avatar';
 import ModalConfirmacao from '../../components/ui/ModalConfirmacao';
-import { lojaMock } from '../../dados/loja';
+import { useLoja } from '../../contexts/LojaContext';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
 import { Store, CreditCard, MapPin, Settings, LogOut, ChevronRight } from 'lucide-react';
 import estilos from './PaginaInformacaoLoja.module.css';
@@ -25,15 +25,24 @@ const ITENS_LOJA: ItemAtalho[] = [
 const PaginaInformacaoLoja = () => {
   const navigate = useNavigate();
   const { sair } = useAutenticacao();
+  // Dados reais: GET /lojas/minha-loja (via LojaContext). RotaExigeLoja já
+  // garante que a loja está carregada antes de renderizar esta página.
+  const { loja } = useLoja();
   const [modalSairAberto, setModalSairAberto] = useState(false);
+
+  const nomeLoja = loja?.nome ?? '';
+  const categoriaLoja = loja?.categoria ?? '';
+  const imagemLoja = loja?.imagemUrl ?? '';
 
   return (
     <LayoutPagina titulo="Informações da loja">
       <div className={estilos.container}>
         <div className={estilos.perfil}>
-          <Avatar nome={lojaMock.nome} fotoUrl={lojaMock.fotoUrl} tamanho="grande" />
-          <h2 className={estilos.nomeLoja}>{lojaMock.nome}</h2>
-          <p className={estilos.categoriaLoja}>Cozinha · {lojaMock.categoria}</p>
+          <Avatar nome={nomeLoja} fotoUrl={imagemLoja} tamanho="grande" />
+          <h2 className={estilos.nomeLoja}>{nomeLoja}</h2>
+          <p className={estilos.categoriaLoja}>
+            {categoriaLoja ? `Cozinha · ${categoriaLoja}` : 'Categoria não informada'}
+          </p>
         </div>
 
         <Cartao className={estilos.cartaoLista}>
