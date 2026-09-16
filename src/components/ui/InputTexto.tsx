@@ -10,6 +10,7 @@ export interface PropsInputTexto extends Omit<InputHTMLAttributes<HTMLInputEleme
   erro?: string;
   obrigatorio?: boolean;
   mascara?: (valor: string) => string;
+  acao?: ReactNode;
 }
 
 const InputTexto = ({
@@ -24,6 +25,7 @@ const InputTexto = ({
   tipo,
   type = 'text',
   placeholder,
+  acao,
   ...props
 }: PropsInputTexto) => {
   const tipoFinal = tipo || type;
@@ -71,6 +73,7 @@ const InputTexto = ({
       </div>
       
       {erro && <span className={estilos.mensagemErro}>{erro}</span>}
+      {acao && <div className={estilos.acao}>{acao}</div>}
     </div>
   );
 };

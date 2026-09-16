@@ -80,10 +80,16 @@ async function requisicao<T>(
       tratar401SessaoExpirada();
     }
 
-    // Observado no backend real: token inválido/expirado retorna 403 com
-    // corpo vazio (filtro JWT do Spring Security). Nesse caso, também é
-    // sessão inválida → logout. 403 COM corpo é erro de permissão (negócio).
-    if (resposta.status === 403 && corpoErro.erro === 'ErroDesconhecido') {
+    // Observado no backend real (validado em runtime contra branch Edu):
+    // token inválido/expirado → 403 do Spring Security com corpo PADRÃO
+    // (`error: "Forbidden"` — NÃO é ErroPadraoDTO). Já 403 de NEGÓCIO vem do
+    // ResourceExceptionHandler com `error: "ACESSO_NEGADO"` (ex.: AcessoNegadoException).
+    // "ErroDesconhecido" (403 sem corpo) e "Forbidden" = sessão inválida → logout.
+    // 403 com `error` de negócio (ACESSO_NEGADO) NÃO desloga — só mostra a mensagem.
+    if (
+      resposta.status === 403 &&
+      (corpoErro.erro === 'ErroDesconhecido' || corpoErro.erro === 'Forbidden')
+    ) {
       tratar401SessaoExpirada();
     }
 
@@ -516,24 +522,35 @@ export async function buscarProduto(id: string): Promise<ProdutoLojistaDTO> {
 }
 
 /**
+ * O backend (ProdutoCreateDTO / ProdutoUpdateDTO) recebe `isAtivo` (@NotNull),
+ * mas RESPONDE `ativo` (ProdutoLojistaDTO). O formulário trabalha com o campo
+ * de resposta (`ativo`) — aqui convertemos para o contrato de entrada.
+ * Validado em runtime na branch Edu: PUT sem `isAtivo` → 400 VALIDACAO_FALHOU.
+ */
+function paraPayloadProduto(dados: Partial<ProdutoLojistaDTO>): Record<string, unknown> {
+  const { ativo, ...resto } = dados;
+  return { ...resto, isAtivo: ativo };
+}
+
+/**
  * Cria um novo produto
  * POST /produtos
  */
 export async function criarProduto(dados: ProdutoLojistaDTO): Promise<{ id: string }> {
   return requisicao<{ id: string }>('/produtos', {
     method: 'POST',
-    body: JSON.stringify(dados),
+    body: JSON.stringify(paraPayloadProduto(dados)),
   });
 }
 
 /**
  * Atualiza um produto existente
- * PUT /produtos/{id}
+ * PUT /produtos/{id} — payload completo (isAtivo obrigatório no backend).
  */
 export async function atualizarProduto(id: string, dados: Partial<ProdutoLojistaDTO>): Promise<void> {
   return requisicao<void>(`/produtos/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(dados),
+    body: JSON.stringify(paraPayloadProduto(dados)),
   });
 }
 
@@ -561,9 +578,12 @@ export async function ativarProduto(id: string): Promise<void> {
  * Atualiza a quantidade em estoque (reposição rápida).
  * PATCH /produtos/{id}/estoque — body: { estoque } (AtualizarEstoqueDTO,
  * valor ABSOLUTO e >= 0, não incremento).
+ * Atenção ao contrato real (branch Edu): responde ProdutoResumoDTO — SEM os
+ * campos `ativo`/`estoque` do ProdutoLojistaDTO. Quem chamar NÃO deve usar a
+ * resposta como produto completo; recarregar a lista com listarProdutos().
  */
-export async function atualizarEstoqueProduto(id: string, estoque: number): Promise<ProdutoLojistaDTO> {
-  return requisicao<ProdutoLojistaDTO>(`/produtos/${id}/estoque`, {
+export async function atualizarEstoqueProduto(id: string, estoque: number): Promise<void> {
+  return requisicao<void>(`/produtos/${id}/estoque`, {
     method: 'PATCH',
     body: JSON.stringify({ estoque }),
   });
