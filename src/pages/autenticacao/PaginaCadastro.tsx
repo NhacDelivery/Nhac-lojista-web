@@ -409,37 +409,16 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     setCarregando(true);
     setErros({});
     try {
-      if (modo === 'completo') {
-        if (!emailEstaVerificado(email)) {
-          setEtapaAtual(indices.VERIFICACAO);
-          setErros({ geral: 'Confirme seu e-mail antes de finalizar o cadastro.' });
-          return;
-        }
-
-        const respostaRegistro = await registrar({
-          id: gerarUuid(),
-          nome: limparTexto(nomeCompleto),
-          email: normalizarEmail(email),
-          telefone: soDigitos(telefone),
-          senha,
-        });
-
-        // definirSessao já persiste o token em '@nhac:token' — não duplicar.
-        const tokenValido = respostaRegistro.accessToken || respostaRegistro.token || '';
-        definirSessao(tokenValido, {
-          id: respostaRegistro.usuarioId ?? email,
-          nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
-          email,
-          telefone,
-          // Neste momento o papel REAL no backend é CLIENTE — ele só é
-          // promovido a LOJISTA quando a loja é criada (POST /lojas), logo
-          // abaixo. A UI trata qualquer usuário autenticado como
-          // 'administrador' (mesma conversão de converterUsuarioApi no
-          // AutenticacaoContext). Enviar o papel cru ('CLIENTE') quebrava o
-          // RotaProtegida logo após o cadastro (cargo inexistente na UI).
-          cargo: 'administrador',
-        });
-        limparEmailVerificado();
+      // A conta (registrar + definirSessao) já foi criada logo após a
+      // verificação de e-mail, em handleVerificacaoConcluida — é o que
+      // garante que já existe token válido quando o upload da logo
+      // acontece na etapa "Dados da Loja". Esta checagem fica só como
+      // rede de segurança para o caso do usuário chegar aqui sem ter
+      // passado por lá.
+      if (modo === 'completo' && !emailEstaVerificado(email)) {
+        setEtapaAtual(indices.VERIFICACAO);
+        setErros({ geral: 'Confirme seu e-mail antes de finalizar o cadastro.' });
+        return;
       }
 
       await criarLoja(montarPayloadLoja());
@@ -471,9 +450,64 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   };
 
 
-  const handleVerificacaoConcluida = () => {
-    setEtapaAtual(indices.LOJA);
-    window.scrollTo(0, 0);
+  /**
+   * Roda assim que o código de verificação é confirmado. Antes, a conta só
+   * era criada (registrar + definirSessao) no finalizar(), na última etapa —
+   * só que o upload da logo, na etapa seguinte ("Dados da Loja"), depende de
+   * ter um token em localStorage. Sem conta ainda criada, a chamada de
+   * upload saía sem Authorization e o backend respondia 403. Por isso a
+   * criação da conta foi movida pra cá: assim que o e-mail é confirmado, já
+   * temos token válido antes de o usuário conseguir escolher uma foto.
+   */
+  const handleVerificacaoConcluida = async () => {
+    if (modo !== 'completo') {
+      setEtapaAtual(indices.LOJA);
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    setCarregando(true);
+    setErros({});
+    try {
+      const respostaRegistro = await registrar({
+        id: gerarUuid(),
+        nome: limparTexto(nomeCompleto),
+        email: normalizarEmail(email),
+        telefone: soDigitos(telefone),
+        senha,
+      });
+
+      // definirSessao já persiste o token em '@nhac:token' — não duplicar.
+      const tokenValido = respostaRegistro.accessToken || respostaRegistro.token || '';
+      definirSessao(tokenValido, {
+        id: respostaRegistro.usuarioId ?? email,
+        nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
+        email,
+        telefone,
+        // Neste momento o papel REAL no backend é CLIENTE — ele só é
+        // promovido a LOJISTA quando a loja é criada (POST /lojas), lá na
+        // etapa de Revisão. A UI trata qualquer usuário autenticado como
+        // 'administrador' (mesma conversão de converterUsuarioApi no
+        // AutenticacaoContext). Enviar o papel cru ('CLIENTE') quebrava o
+        // RotaProtegida logo após o cadastro (cargo inexistente na UI).
+        cargo: 'administrador',
+      });
+      limparEmailVerificado();
+
+      setEtapaAtual(indices.LOJA);
+      window.scrollTo(0, 0);
+    } catch (err) {
+      const tratado = tratarErroApi(err);
+      if (tratado.sugerirLogin) {
+        setErros({ geral: `${tratado.mensagemGeral} Faça login se já possui conta.` });
+      } else if (tratado.toastGenerico) {
+        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.');
+      } else {
+        setErros({ geral: tratado.mensagemGeral ?? 'Erro ao criar sua conta. Tente novamente.' });
+      }
+    } finally {
+      setCarregando(false);
+    }
   };
 
   /**
