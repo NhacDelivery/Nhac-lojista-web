@@ -4,6 +4,8 @@ export * from './Botao';
 export { default as InputTexto } from './InputTexto';
 export * from './InputTexto';
 
+export { default as InputSenha } from './InputSenha';
+
 export { default as Seletor } from './Seletor';
 export * from './Seletor';
 

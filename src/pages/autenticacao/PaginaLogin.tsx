@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import estilos from './PaginaLogin.module.css';
-import { Botao, InputTexto, Cartao } from '../../components/ui';
+import { Botao, InputTexto, Cartao, InputSenha } from '../../components/ui';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
 import { validarEmail, validarSenhaLogin, validarFormulario } from '../../validators';
 import { tratarErroApi } from '../../utils/errosApi';
@@ -119,28 +119,18 @@ export default function PaginaLogin() {
             obrigatorio
           />
 
-          <div style={{ position: 'relative' }}>
-            <InputTexto
-              rotulo="Senha"
-              tipo={mostrarSenha ? 'text' : 'password'}
-              valor={senha}
-              aoMudar={setSenha}
-              placeholder="Sua senha"
-              icone={<Lock size={18} />}
-              erro={erroCampo('senha')}
-              onBlur={() => tocarCampo('senha', senha, validarSenhaLogin)}
-              obrigatorio
-            />
-            <button
-              type="button"
-              className={estilos.toggleSenha}
-              onClick={alternarVisualizacaoSenha}
-              style={{ bottom: '0.9rem', position: 'absolute' }}
-              aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-            >
-              {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
+          <InputSenha
+            rotulo="Senha"
+            valor={senha}
+            aoMudar={setSenha}
+            placeholder="Sua senha"
+            icone={<Lock size={18} />}
+            erro={erroCampo('senha')}
+            onBlur={() => tocarCampo('senha', senha, validarSenhaLogin)}
+            mostrarAgora={mostrarSenha}
+            onAlternarVisualizacao={alternarVisualizacaoSenha}
+            obrigatorio
+          />
 
           <div className={estilos.opcoes}>
             <Link to="/recuperar-senha" className={estilos.link}>Esqueci minha senha</Link>

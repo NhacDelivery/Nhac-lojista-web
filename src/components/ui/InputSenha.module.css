@@ -25,7 +25,7 @@
 }
 
 .comErro {
-  border-color: #EF4444;
+  border-color: #ef4444;
 }
 
 .icone {
@@ -66,7 +66,7 @@
 }
 
 .asterisco {
-  color: #EF4444;
+  color: #ef4444;
 }
 
 .input {
@@ -79,9 +79,15 @@
   outline: none;
   color: var(--nhac-texto);
   font-size: 16px;
-  padding-top: 16px; /* Space for the floating label */
+  padding-top: 16px;
   padding-bottom: 4px;
   font-family: inherit;
+}
+
+/* Reserva espaço à direita para o botão de mostrar/ocultar a senha,
+   evitando que o texto (ou os pontinhos) passe por baixo do botão. */
+.comAcao {
+  padding-right: 26px;
 }
 
 .desabilitado {
@@ -89,7 +95,7 @@
 }
 
 .desabilitado .inputWrapper {
-  background-color: #F9FAFB;
+  background-color: #f9fafb;
 }
 
 .desabilitado .input {
@@ -97,7 +103,7 @@
 }
 
 .mensagemErro {
-  color: #EF4444;
+  color: #ef4444;
   font-size: 12px;
   margin-left: 16px;
   margin-top: 2px;
@@ -107,21 +113,32 @@
   padding-top: 0;
 }
 
-.acao {
+/* Botão de olho (mostrar/ocultar senha) - sobreposto ao inputWrapper,
+   centralizado verticalmente para não competir com o rótulo flutuante */
+.botaoOlho {
   position: absolute;
   right: 12px;
-  bottom: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--nhac-texto-claro);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--nhac-texto-claro);
-  cursor: pointer;
-  background: none;
-  border: none;
   padding: 4px;
   border-radius: 6px;
+  line-height: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.acao:hover {
+.botaoOlho:hover:not(:disabled) {
   background-color: rgba(0, 0, 0, 0.05);
+  color: var(--nhac-texto);
+}
+
+.botaoOlho:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }

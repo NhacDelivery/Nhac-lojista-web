@@ -1,12 +1,12 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
-  User, Mail, Phone, Lock, Eye, EyeOff, 
+  User, Mail, Phone, 
   Store, UploadCloud, MapPin, CheckCircle, 
   Banknote, CreditCard, Smartphone, Utensils, ShoppingBag,
 } from 'lucide-react';
 import estilos from './PaginaCadastro.module.css';
-import { Botao, InputTexto, Seletor, Toggle, Checkbox, IndicadorEtapas, Cartao } from '../../components/ui';
+import { Botao, InputTexto, Seletor, Toggle, Checkbox, IndicadorEtapas, Cartao, InputSenha } from '../../components/ui';
 import { mascaraTelefone, mascaraCep, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
 import { CATEGORIAS_LOJA } from '../../dados/categorias';
 import { registrar, criarLoja, buscarCep as apiBuscarCep, enviarCodigoCadastro, checarEmail, enviarImagem } from '../../services/api';
@@ -431,7 +431,13 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
           nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
           email,
           telefone,
-          cargo: (respostaRegistro.papel as 'administrador') ?? 'administrador',
+          // Neste momento o papel REAL no backend é CLIENTE — ele só é
+          // promovido a LOJISTA quando a loja é criada (POST /lojas), logo
+          // abaixo. A UI trata qualquer usuário autenticado como
+          // 'administrador' (mesma conversão de converterUsuarioApi no
+          // AutenticacaoContext). Enviar o papel cru ('CLIENTE') quebrava o
+          // RotaProtegida logo após o cadastro (cargo inexistente na UI).
+          cargo: 'administrador',
         });
         limparEmailVerificado();
       }
@@ -595,60 +601,42 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 onBlur={() => tocarCampo('telefone', telefone, validarTelefone)}
                 obrigatorio
               />
-              <div style={{ position: 'relative' }}>
-                <InputTexto
-                  rotulo="Senha"
-                  tipo={mostrarSenha ? 'text' : 'password'}
-                  valor={senha}
-                  aoMudar={setSenha}
-                  icone={<Lock size={18} />}
-                  erro={erroCampo('senha')}
-                  onBlur={() => tocarCampo('senha', senha, validarSenhaCadastro)}
-                  obrigatorio
-                />
-                <button
-                  type="button"
-                  onClick={() => setMostrarSenha(!mostrarSenha)}
-                  style={{ position: 'absolute', right: '1rem', bottom: erros.senha ? '2rem' : '0.9rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nhac-texto-claro)' }}
-                >
-                  {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-                {senha.length > 0 && (
-                  <div style={{ marginTop: '0.5rem', display: 'grid', gap: '0.25rem', fontSize: '0.8rem' }}>
-                    <span style={{ color: senhaTemMinimoOito(senha) ? 'var(--nhac-sucesso, green)' : 'var(--nhac-texto-claro)' }}>
-                      {senhaTemMinimoOito(senha) ? '✓' : '○'} Mínimo 8 caracteres
-                    </span>
-                    <span style={{ color: senhaTemLetra(senha) ? 'var(--nhac-sucesso, green)' : 'var(--nhac-texto-claro)' }}>
-                      {senhaTemLetra(senha) ? '✓' : '○'} Pelo menos 1 letra
-                    </span>
-                    <span style={{ color: senhaTemNumero(senha) ? 'var(--nhac-sucesso, green)' : 'var(--nhac-texto-claro)' }}>
-                      {senhaTemNumero(senha) ? '✓' : '○'} Pelo menos 1 número
-                    </span>
-                    <span style={{ color: forcaSenha(senha) === 'forte' ? 'var(--nhac-sucesso, green)' : forcaSenha(senha) === 'media' ? 'orange' : 'var(--nhac-texto-claro)' }}>
-                      Força: {forcaSenha(senha)}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div style={{ position: 'relative' }}>
-                <InputTexto
-                  rotulo="Confirmar Senha"
-                  tipo={mostrarConfirmarSenha ? 'text' : 'password'}
-                  valor={confirmarSenha}
-                  aoMudar={setConfirmarSenha}
-                  icone={<Lock size={18} />}
-                  erro={erroCampo('confirmarSenha')}
-                  onBlur={() => tocarCampo('confirmarSenha', confirmarSenha, validarConfirmarSenha(senha))}
-                  obrigatorio
-                />
-                <button
-                  type="button"
-                  onClick={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
-                  style={{ position: 'absolute', right: '1rem', bottom: erros.confirmarSenha ? '2rem' : '0.9rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nhac-texto-claro)' }}
-                >
-                  {mostrarConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+              <InputSenha
+                rotulo="Senha"
+                valor={senha}
+                aoMudar={setSenha}
+                erro={erroCampo('senha')}
+                obrigatorio
+                onBlur={() => tocarCampo('senha', senha, validarSenhaCadastro)}
+                mostrarAgora={mostrarSenha}
+                onAlternarVisualizacao={() => setMostrarSenha(!mostrarSenha)}
+              />
+              {senha.length > 0 && (
+                <div style={{ marginTop: '0.5rem', display: 'grid', gap: '0.25rem', fontSize: '0.8rem' }}>
+                  <span style={{ color: senhaTemMinimoOito(senha) ? 'var(--nhac-sucesso, green)' : 'var(--nhac-texto-claro)' }}>
+                    {senhaTemMinimoOito(senha) ? '✓' : '○'} Mínimo 8 caracteres
+                  </span>
+                  <span style={{ color: senhaTemLetra(senha) ? 'var(--nhac-sucesso, green)' : 'var(--nhac-texto-claro)' }}>
+                    {senhaTemLetra(senha) ? '✓' : '○'} Pelo menos 1 letra
+                  </span>
+                  <span style={{ color: senhaTemNumero(senha) ? 'var(--nhac-sucesso, green)' : 'var(--nhac-texto-claro)' }}>
+                    {senhaTemNumero(senha) ? '✓' : '○'} Pelo menos 1 número
+                  </span>
+                  <span style={{ color: forcaSenha(senha) === 'forte' ? 'var(--nhac-sucesso, green)' : forcaSenha(senha) === 'media' ? 'orange' : 'var(--nhac-texto-claro)' }}>
+                    Força: {forcaSenha(senha)}
+                  </span>
+                </div>
+              )}
+              <InputSenha
+                rotulo="Confirmar Senha"
+                valor={confirmarSenha}
+                aoMudar={setConfirmarSenha}
+                erro={erroCampo('confirmarSenha')}
+                obrigatorio
+                onBlur={() => tocarCampo('confirmarSenha', confirmarSenha, validarConfirmarSenha(senha))}
+                mostrarAgora={mostrarConfirmarSenha}
+                onAlternarVisualizacao={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
+              />
 
               <div>
                 <Checkbox
