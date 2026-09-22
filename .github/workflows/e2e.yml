@@ -114,7 +114,7 @@ jobs:
         working-directory: Nhac-lojista-web
         env:
           RUN_E2E: 'true'
-          E2E_WEB_BASE_URL: http://127.0.0.1:3000
+          E2E_WEB_BASE_URL: http://localhost:3000
         run: npm run test:e2e
 
       - name: Publicar diagnóstico
