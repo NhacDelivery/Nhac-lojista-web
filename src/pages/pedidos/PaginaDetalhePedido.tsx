@@ -19,6 +19,7 @@ import {
   proximoStatusPermitidoParaLojista,
 } from "../../validators/statusPedido";
 import { atualizarStatusPedido, buscarPedido, despacharPedido, PedidoDetalheLojistaDTO } from "../../services/api";
+import { conectarStatusPedidoSocket } from "../../services/pedidoStatusSocket";
 import { tratarErroApi } from "../../utils/errosApi";
 import { useToast } from "../../contexts/ToastContext";
 import {
@@ -81,6 +82,24 @@ const PaginaDetalhePedido = () => {
   useEffect(() => {
     carregarPedido();
   }, [carregarPedido]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const socket = conectarStatusPedidoSocket(id, (novoStatus) => {
+      setStatus((statusAnterior) => {
+        if (statusAnterior && statusAnterior !== novoStatus) {
+          mostrarToast(`Pedido atualizado para "${ROTULOS_ETAPA[novoStatus] ?? novoStatus}".`);
+        }
+        return novoStatus;
+      });
+      setPedido((pedidoAnterior) =>
+        pedidoAnterior ? { ...pedidoAnterior, status: novoStatus } : pedidoAnterior,
+      );
+    });
+
+    return () => socket.desconectar();
+  }, [id, mostrarToast]);
 
   if (carregando) {
     return (
