@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.E2E_WEB_BASE_URL ?? 'http://127.0.0.1:3000';
+const baseURL = process.env.E2E_WEB_BASE_URL ?? 'http://localhost:3000';
 
 if (process.env.RUN_E2E === 'true' && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(baseURL)) {
   throw new Error(`URL E2E recusada: ${baseURL}. Use somente o painel local isolado.`);
