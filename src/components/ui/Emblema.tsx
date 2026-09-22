@@ -1,15 +1,15 @@
-import React, { ReactNode } from 'react';
+import React, { HTMLAttributes, ReactNode } from 'react';
 import estilos from './Emblema.module.css';
 
-export interface PropsEmblema {
+export interface PropsEmblema extends HTMLAttributes<HTMLSpanElement> {
   variante?: 'sucesso' | 'erro' | 'aviso' | 'info' | 'neutro';
   children: ReactNode;
   className?: string;
 }
 
-const Emblema = ({ variante = 'neutro', children, className = '' }: PropsEmblema) => {
+const Emblema = ({ variante = 'neutro', children, className = '', ...props }: PropsEmblema) => {
   return (
-    <span className={`${estilos.emblema} ${estilos[variante]} ${className}`}>
+    <span className={`${estilos.emblema} ${estilos[variante]} ${className}`} {...props}>
       {children}
     </span>
   );
