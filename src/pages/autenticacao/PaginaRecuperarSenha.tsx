@@ -140,7 +140,14 @@ export default function PaginaRecuperarSenha() {
     <div className={estilos.container}>
       <Cartao className={estilos.cartao}>
         <div className={estilos.cabecalho}>
-          <h1 className={estilos.logo}>Nhac</h1>
+          <h1 className={estilos.logo}>
+            <img
+              src={`${process.env.PUBLIC_URL}/nhac-logo.png`}
+              alt="Nhac"
+              width={132}
+              height={49}
+            />
+          </h1>
           <p className={estilos.subtituloCabecalho}>Lojas</p>
         </div>
 
@@ -215,42 +222,44 @@ export default function PaginaRecuperarSenha() {
             <p className={estilos.subtitulo}>
               Escolha uma senha com pelo menos 6 caracteres.
             </p>
-            <div style={{ position: 'relative' }}>
-              <InputTexto
-                rotulo="Nova senha"
-                tipo={mostrarSenha ? 'text' : 'password'}
-                valor={novaSenha}
-                aoMudar={setNovaSenha}
-                icone={<Lock size={18} />}
-                erro={erros.novaSenha}
-                obrigatorio
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarSenha(!mostrarSenha)}
-                style={{ position: 'absolute', right: '1rem', bottom: erros.novaSenha ? '2rem' : '0.9rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nhac-texto-claro)' }}
-              >
-                {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <div style={{ position: 'relative' }}>
-              <InputTexto
-                rotulo="Confirmar nova senha"
-                tipo={mostrarConfirmar ? 'text' : 'password'}
-                valor={confirmarSenha}
-                aoMudar={setConfirmarSenha}
-                icone={<Lock size={18} />}
-                erro={erros.confirmarSenha}
-                obrigatorio
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
-                style={{ position: 'absolute', right: '1rem', bottom: erros.confirmarSenha ? '2rem' : '0.9rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nhac-texto-claro)' }}
-              >
-                {mostrarConfirmar ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <InputTexto
+              rotulo="Nova senha"
+              tipo={mostrarSenha ? 'text' : 'password'}
+              valor={novaSenha}
+              aoMudar={setNovaSenha}
+              icone={<Lock size={18} />}
+              erro={erros.novaSenha}
+              obrigatorio
+              sufixo={
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                  aria-label={mostrarSenha ? 'Ocultar senhas' : 'Mostrar senhas'}
+                  aria-pressed={mostrarSenha}
+                >
+                  {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
+            />
+            <InputTexto
+              rotulo="Confirmar nova senha"
+              tipo={mostrarConfirmar ? 'text' : 'password'}
+              valor={confirmarSenha}
+              aoMudar={setConfirmarSenha}
+              icone={<Lock size={18} />}
+              erro={erros.confirmarSenha}
+              obrigatorio
+              sufixo={
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
+                  aria-label={mostrarConfirmar ? 'Ocultar confirmação' : 'Mostrar confirmação'}
+                  aria-pressed={mostrarConfirmar}
+                >
+                  {mostrarConfirmar ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
+            />
             <Botao variante="primario" larguraTotal carregando={carregando} onClick={redefinirSenha}>
               Redefinir senha
             </Botao>

@@ -11,7 +11,7 @@ import { useLoja } from '../../contexts/LojaContext';
 import { useToast } from '../../contexts/ToastContext';
 import { tratarErroApi } from '../../utils/errosApi';
 import { formatarMoeda, formatarHora, STATUS_PEDIDO_INFO } from '../../utils/formatacao';
-import { DollarSign, ShoppingBag, ChevronRight, Clock, Star, ChefHat, Bike, CheckCircle } from 'lucide-react';
+import { ChevronRight, Clock, ChefHat, Bike, CheckCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import estilos from './PaginaPainel.module.css';
 
@@ -26,6 +26,14 @@ const PaginaPainel = () => {
   const [carregandoPainel, setCarregandoPainel] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [alterandoStatusLoja, setAlterandoStatusLoja] = useState(false);
+  const [agora, setAgora] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setAgora(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const horaAgora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   const carregarPainel = useCallback(async () => {
     try {
@@ -97,78 +105,65 @@ const PaginaPainel = () => {
   return (
     <LayoutPagina titulo="Painel">
       <div className={estilos.container}>
-        <header className={estilos.cabecalho}>
-          <div className={estilos.cabecalhoTexto}>
-            <h2 className={estilos.boasVindas}>Olá, {usuarioNome}! 👋</h2>
+        <header className={estilos.faixaPlaca}>
+          <div className={estilos.placaTextos}>
+            <h2 className={estilos.boasVindas}>Olá, {usuarioNome}!</h2>
             <p className={estilos.subtitulo}>Aqui está o resumo da sua loja hoje.</p>
+            <div className={estilos.statusLoja}>
+              <div className={`${estilos.statusBolinha} ${lojaAberta ? estilos.aberta : estilos.fechada}`} />
+              <span className={estilos.placaEstado}>{lojaAberta ? 'ABERTO' : 'FECHADO'}</span>
+              <span className={estilos.statusTexto}>{lojaAberta ? 'Sua loja está aberta' : 'Sua loja está fechada'}</span>
+              <Toggle rotulo="" ativo={lojaAberta} aoMudar={handleAlternarLojaAberta} desabilitado={alterandoStatusLoja} />
+            </div>
           </div>
-          <div className={estilos.statusLoja}>
-            <span className={estilos.statusTexto}>{lojaAberta ? 'Sua loja está aberta' : 'Sua loja está fechada'}</span>
-            <Toggle rotulo="" ativo={lojaAberta} aoMudar={handleAlternarLojaAberta} desabilitado={alterandoStatusLoja} />
-            <div className={`${estilos.statusBolinha} ${lojaAberta ? estilos.aberta : estilos.fechada}`} />
+          <div className={estilos.faixaAgora}>
+            <Clock size={18} aria-hidden="true" />
+            <span className={estilos.relogio}>{horaAgora}</span>
+            <span className={estilos.rotuloAgora}>AGORA</span>
           </div>
         </header>
 
-        <section className={estilos.kpis}>
-          <Cartao className={estilos.cartaoKpi}>
-            <div className={estilos.kpiIcone} style={{ backgroundColor: 'var(--nhac-primaria-fundo)', color: 'var(--nhac-primaria)' }}>
-              <DollarSign size={24} />
-            </div>
-            <div className={estilos.kpiInfo}>
-              <span className={estilos.kpiRotulo}>Faturamento do Dia</span>
-              <span className={estilos.kpiValor}>{formatarMoeda(painel.faturamentoHoje)}</span>
-            </div>
-          </Cartao>
-          <Cartao className={estilos.cartaoKpi}>
-            <div className={estilos.kpiIcone} style={{ backgroundColor: '#E3F2FD', color: '#1976D2' }}>
-              <ShoppingBag size={24} />
-            </div>
-            <div className={estilos.kpiInfo}>
-              <span className={estilos.kpiRotulo}>Concluídos Hoje</span>
-              <span className={estilos.kpiValor}>{painel.pedidosConcluidosHoje}</span>
-            </div>
-          </Cartao>
-          <Cartao className={estilos.cartaoKpi}>
-            <div className={estilos.kpiIcone} style={{ backgroundColor: '#FFF8E1', color: '#FBC02D' }}>
-              <Star size={24} />
-            </div>
-            <div className={estilos.kpiInfo}>
-              <span className={estilos.kpiRotulo}>Avaliação da Loja</span>
-              <div className={estilos.avaliacaoValor}>
-                <span className={estilos.kpiValor}>—</span>
-                <span className={estilos.avaliacaoEstrelas}>⭐</span>
-              </div>
-              <span className={estilos.avaliacaoTotal}>(avaliações em breve)</span>
-            </div>
-          </Cartao>
-        </section>
-
-        <section className={estilos.statusPedidosGrid}>
-          <Cartao className={`${estilos.cartaoStatus} ${estilos.statusAmarelo}`}>
-            <ChefHat size={28} className={estilos.iconeStatus} />
-            <div className={estilos.infoStatus}>
-              <span className={estilos.valorStatus}>{painel.pedidosEmPreparo}</span>
-              <span className={estilos.rotuloStatus}>Em preparo</span>
-            </div>
-          </Cartao>
-          <Cartao className={`${estilos.cartaoStatus} ${estilos.statusAzul}`}>
-            <Bike size={28} className={estilos.iconeStatus} />
-            <div className={estilos.infoStatus}>
-              <span className={estilos.valorStatus}>{painel.pedidosACaminho}</span>
-              <span className={estilos.rotuloStatus}>A caminho</span>
-            </div>
-          </Cartao>
-          <Cartao className={`${estilos.cartaoStatus} ${estilos.statusVerde}`}>
-            <CheckCircle size={28} className={estilos.iconeStatus} />
-            <div className={estilos.infoStatus}>
-              <span className={estilos.valorStatus}>{painel.pedidosConcluidosHoje}</span>
-              <span className={estilos.rotuloStatus}>Concluídos hoje</span>
-            </div>
-          </Cartao>
-        </section>
-
         <div className={estilos.duasColunas}>
           <div className={estilos.colunaEsquerda}>
+            <section className={estilos.pedidosRecentes}>
+              <div className={estilos.secaoCabecalho}>
+                <h3 className={estilos.secaoTitulo}>Pedidos Recentes</h3>
+                <Botao variante="fantasma" onClick={() => navigate('/pedidos')}>Ver todos</Botao>
+              </div>
+              <div className={estilos.quadroFila}>
+                <div className={estilos.cabecalhoCampos}>
+                  <span className="campoMicro">Hora</span>
+                  <span className="campoMicro">Pedido</span>
+                  <span className="campoMicro">Cliente</span>
+                  <span className="campoMicro">Estado</span>
+                  <span className="campoMicro">Total</span>
+                  <span aria-hidden="true" />
+                </div>
+                {painel.pedidosRecentes.length === 0 && (
+                  <p style={{ color: 'var(--nhac-texto-claro)', fontSize: '0.875rem', padding: '16px 20px' }}>Nenhum pedido ainda.</p>
+                )}
+                {painel.pedidosRecentes.map(pedido => (
+                  <button
+                    type="button"
+                    key={pedido.id}
+                    className={estilos.tarja}
+                    onClick={() => navigate(`/pedidos/${pedido.id}`)}
+                  >
+                    <span className={estilos.tarjaHora}>{formatarHora(pedido.criadoEm)}</span>
+                    <span className={`slugPedido ${estilos.tarjaSlug}`}>#{pedido.id.slice(0, 8)}</span>
+                    <span className={estilos.tarjaCliente}>{pedido.clienteNome}</span>
+                    <span className={estilos.tarjaEstado}>
+                      <Emblema variante={pedido.status === 'ENTREGUE' ? 'sucesso' : pedido.status === 'CANCELADO' ? 'erro' : 'info'}>
+                        {STATUS_PEDIDO_INFO[pedido.status]?.rotulo ?? pedido.status}
+                      </Emblema>
+                    </span>
+                    <span className={estilos.tarjaTotal}>{formatarMoeda(pedido.valorTotal)}</span>
+                    <ChevronRight size={18} className={estilos.tarjaSeta} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </section>
+
             <section className={estilos.graficoSecao}>
               <Cartao className={estilos.cartaoGrafico}>
                 <div className={estilos.graficoHeader}>
@@ -193,55 +188,59 @@ const PaginaPainel = () => {
                 </div>
               </Cartao>
             </section>
+          </div>
 
-            <section className={estilos.pedidosRecentes}>
-              <div className={estilos.secaoCabecalho}>
-                <h3 className={estilos.secaoTitulo}>Pedidos Recentes</h3>
-                <Botao variante="fantasma" onClick={() => navigate('/pedidos')}>Ver todos</Botao>
+          <div className={estilos.colunaDireita}>
+            <section className={estilos.etiquetasFolha} aria-label="Resumo do dia">
+              <div className={estilos.etiquetaLinha}>
+                <span className="campoMicro">Faturamento do Dia</span>
+                <span className={estilos.etiquetaValor}>{formatarMoeda(painel.faturamentoHoje)}</span>
               </div>
-              <div className={estilos.listaPedidos}>
-                {painel.pedidosRecentes.length === 0 && (
-                  <p style={{ color: 'var(--nhac-texto-claro)', fontSize: '0.875rem' }}>Nenhum pedido ainda.</p>
-                )}
-                {painel.pedidosRecentes.map(pedido => (
-                  <Cartao key={pedido.id} className={estilos.cartaoPedido}>
-                    <div className={estilos.pedidoPrincipal}>
-                      <span className={estilos.pedidoId}>#{pedido.id.slice(0, 8)}</span>
-                      <span className={estilos.pedidoCliente}>{pedido.clienteNome}</span>
-                    </div>
-                    <div className={estilos.pedidoStatus}>
-                      <Emblema variante={pedido.status === 'ENTREGUE' ? 'sucesso' : pedido.status === 'CANCELADO' ? 'erro' : 'info'}>
-                        {STATUS_PEDIDO_INFO[pedido.status]?.rotulo ?? pedido.status}
-                      </Emblema>
-                    </div>
-                    <div className={estilos.pedidoTotal}>
-                      {formatarMoeda(pedido.valorTotal)}
-                    </div>
-                    <div className={estilos.pedidoTempo}>
-                      <Clock size={14} />
-                      <span>{formatarHora(pedido.criadoEm)}</span>
-                    </div>
-                    <Botao variante="fantasma" onClick={() => navigate(`/pedidos/${pedido.id}`)} icone={<ChevronRight size={20} />} />
-                  </Cartao>
-                ))}
+              <div className={estilos.etiquetaLinha}>
+                <span className="campoMicro">Concluídos Hoje</span>
+                <span className={estilos.etiquetaValor}>{painel.pedidosConcluidosHoje}</span>
+              </div>
+              <div className={estilos.etiquetaLinha}>
+                <span className="campoMicro">Avaliação da Loja</span>
+                <span className={estilos.etiquetaBloco}>
+                  <span className={estilos.etiquetaValor}>—</span>
+                  <span className={estilos.etiquetaNota}>(avaliações em breve)</span>
+                </span>
+              </div>
+              <div className={estilos.contagensPlacar}>
+                <div className={estilos.placarItem}>
+                  <ChefHat size={20} className={estilos.statusAmarelo} />
+                  <span className={estilos.placarValor}>{painel.pedidosEmPreparo}</span>
+                  <span className="campoMicro">Em preparo</span>
+                </div>
+                <div className={estilos.placarItem}>
+                  <Bike size={20} className={estilos.statusAzul} />
+                  <span className={estilos.placarValor}>{painel.pedidosACaminho}</span>
+                  <span className="campoMicro">A caminho</span>
+                </div>
+                <div className={estilos.placarItem}>
+                  <CheckCircle size={20} className={estilos.statusVerde} />
+                  <span className={estilos.placarValor}>{painel.pedidosConcluidosHoje}</span>
+                  <span className="campoMicro">Concluídos hoje</span>
+                </div>
+              </div>
+            </section>
+
+            <section className={estilos.linksRapidos}>
+              <h3 className="campoMicro">Ações Rápidas</h3>
+              <div className={estilos.gridLinks}>
+                <Botao onClick={() => navigate('/produtos/novo')} variante="secundario" larguraTotal>
+                  Adicionar Produto
+                </Botao>
+                <Botao onClick={() => navigate('/funcionarios/novo')} variante="secundario" larguraTotal>
+                  Adicionar Funcionário
+                </Botao>
+                <Botao onClick={() => navigate('/financeiro')} variante="secundario" larguraTotal>
+                  Ver Relatórios
+                </Botao>
               </div>
             </section>
           </div>
-
-          <section className={estilos.linksRapidos}>
-            <h3 className={estilos.secaoTitulo}>Ações Rápidas</h3>
-            <div className={estilos.gridLinks}>
-              <Botao onClick={() => navigate('/produtos/novo')} variante="secundario" larguraTotal>
-                Adicionar Produto
-              </Botao>
-              <Botao onClick={() => navigate('/funcionarios/novo')} variante="secundario" larguraTotal>
-                Adicionar Funcionário
-              </Botao>
-              <Botao onClick={() => navigate('/financeiro')} variante="secundario" larguraTotal>
-                Ver Relatórios
-              </Botao>
-            </div>
-          </section>
         </div>
       </div>
     </LayoutPagina>

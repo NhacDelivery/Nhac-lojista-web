@@ -19,6 +19,13 @@
   text-align: center;
 }
 
+.logoMarca {
+  display: block;
+  height: 44px;
+  width: auto;
+  margin: 0 auto 12px;
+}
+
 .titulo {
   color: var(--nhac-texto);
   margin: 0 0 0.5rem 0;

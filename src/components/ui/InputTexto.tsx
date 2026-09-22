@@ -7,6 +7,7 @@ export interface PropsInputTexto extends Omit<InputHTMLAttributes<HTMLInputEleme
   valor: string;
   aoMudar: (valor: string) => void;
   icone?: ReactNode;
+  sufixo?: ReactNode;
   erro?: string;
   obrigatorio?: boolean;
   mascara?: (valor: string) => string;
@@ -17,6 +18,7 @@ const InputTexto = ({
   valor,
   aoMudar,
   icone,
+  sufixo,
   erro,
   obrigatorio = false,
   disabled = false,
@@ -68,6 +70,13 @@ const InputTexto = ({
             {...props}
           />
         </div>
+
+        {/* Adorno à direita: fica dentro da pílula, alinhado ao centro do campo */}
+        {sufixo && (
+          <div className={estilos.sufixo} onMouseDown={(e) => e.preventDefault()}>
+            {sufixo}
+          </div>
+        )}
       </div>
       
       {erro && <span className={estilos.mensagemErro}>{erro}</span>}

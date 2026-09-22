@@ -3,7 +3,6 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 
 .desabilitado {
@@ -29,7 +28,7 @@
   width: 20px;
   height: 20px;
   border: 2px solid var(--nhac-borda);
-  border-radius: 4px;
+  border-radius: 6px;
   background-color: var(--nhac-superficie);
   display: flex;
   align-items: center;

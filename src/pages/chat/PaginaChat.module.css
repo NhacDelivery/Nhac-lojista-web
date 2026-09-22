@@ -203,6 +203,7 @@
   font-size: 0.75rem;
   color: var(--nhac-texto-claro);
   margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .areaEnvio {
@@ -321,6 +322,7 @@
 .cardPedidoValue {
   color: var(--nhac-texto);
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 768px) {

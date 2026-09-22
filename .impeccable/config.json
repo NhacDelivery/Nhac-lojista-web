@@ -1,0 +1,8 @@
+{
+  "detector": {
+    "ignoreRules": [
+      "layout-transition",
+      "overused-font"
+    ]
+  }
+}

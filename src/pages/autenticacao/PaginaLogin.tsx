@@ -100,7 +100,14 @@ export default function PaginaLogin() {
     <div className={estilos.container}>
       <Cartao className={estilos.cartao}>
         <div className={estilos.cabecalho}>
-          <h1 className={estilos.logo}>Nhac</h1>
+          <h1 className={estilos.logo}>
+            <img
+              src={`${process.env.PUBLIC_URL}/nhac-logo.png`}
+              alt="Nhac"
+              width={132}
+              height={49}
+            />
+          </h1>
           <p className={estilos.subtitulo}>Lojas</p>
         </div>
 
@@ -120,29 +127,28 @@ export default function PaginaLogin() {
             obrigatorio
           />
 
-          <div style={{ position: 'relative' }}>
-            <InputTexto
-              data-testid="e2e.login.password"
-              rotulo="Senha"
-              tipo={mostrarSenha ? 'text' : 'password'}
-              valor={senha}
-              aoMudar={setSenha}
-              placeholder="Sua senha"
-              icone={<Lock size={18} />}
-              erro={erroCampo('senha')}
-              onBlur={() => tocarCampo('senha', senha, validarSenhaLogin)}
-              obrigatorio
-            />
-            <button
-              type="button"
-              className={estilos.toggleSenha}
-              onClick={alternarVisualizacaoSenha}
-              style={{ bottom: '0.9rem', position: 'absolute' }}
-              aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-            >
-              {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
+          <InputTexto
+            data-testid="e2e.login.password"
+            rotulo="Senha"
+            tipo={mostrarSenha ? 'text' : 'password'}
+            valor={senha}
+            aoMudar={setSenha}
+            placeholder="Sua senha"
+            icone={<Lock size={18} />}
+            erro={erroCampo('senha')}
+            onBlur={() => tocarCampo('senha', senha, validarSenhaLogin)}
+            obrigatorio
+            sufixo={
+              <button
+                type="button"
+                onClick={alternarVisualizacaoSenha}
+                aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                aria-pressed={mostrarSenha}
+              >
+                {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            }
+          />
 
           <div className={estilos.opcoes}>
             <Link to="/recuperar-senha" className={estilos.link}>Esqueci minha senha</Link>

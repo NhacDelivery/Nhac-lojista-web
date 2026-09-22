@@ -346,7 +346,7 @@ const PaginaConfiguracoesConta = () => {
               <div className={estilos.itemTextos}>
                 <span className={estilos.itemRotulo}>Senha</span>
                 {editandoSenha ? (
-                  <div style={{ position: "relative" }}>
+                  <div>
                     <InputTexto
                       rotulo=""
                       tipo={mostrarSenha ? "text" : "password"}
@@ -354,6 +354,16 @@ const PaginaConfiguracoesConta = () => {
                       aoMudar={setSenha}
                       placeholder="Nova senha (mínimo 6 caracteres)"
                       erro={erros.senha}
+                      sufixo={
+                        <button
+                          type="button"
+                          onClick={() => setMostrarSenha(!mostrarSenha)}
+                          aria-label={mostrarSenha ? "Ocultar senhas" : "Mostrar senhas"}
+                          aria-pressed={mostrarSenha}
+                        >
+                          {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      }
                     />
                     <InputTexto
                       rotulo=""
@@ -363,21 +373,6 @@ const PaginaConfiguracoesConta = () => {
                       placeholder="Confirmar nova senha"
                       erro={erros.confirmarSenha}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setMostrarSenha(!mostrarSenha)}
-                      style={{
-                        position: "absolute",
-                        right: "1rem",
-                        top: "0.75rem",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "var(--nhac-texto-claro)",
-                      }}
-                    >
-                      {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
                   </div>
                 ) : (
                   <span className={estilos.itemValor}>••••••••</span>

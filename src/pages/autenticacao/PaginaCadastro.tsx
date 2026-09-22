@@ -549,6 +549,13 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     <div className={estilos.container}>
       <div className={estilos.conteudo}>
         <div className={estilos.cabecalho}>
+          <img
+            className={estilos.logoMarca}
+            src={`${process.env.PUBLIC_URL}/nhac-logo.png`}
+            alt="Nhac"
+            width={132}
+            height={49}
+          />
           <h1 className={estilos.titulo}>
             {modo === 'apenas-loja' ? 'Cadastre sua loja' : 'Crie sua conta'}
           </h1>
@@ -595,7 +602,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 onBlur={() => tocarCampo('telefone', telefone, validarTelefone)}
                 obrigatorio
               />
-              <div style={{ position: 'relative' }}>
+              <div>
                 <InputTexto
                   rotulo="Senha"
                   tipo={mostrarSenha ? 'text' : 'password'}
@@ -605,14 +612,17 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                   erro={erroCampo('senha')}
                   onBlur={() => tocarCampo('senha', senha, validarSenhaCadastro)}
                   obrigatorio
+                  sufixo={
+                    <button
+                      type="button"
+                      onClick={() => setMostrarSenha(!mostrarSenha)}
+                      aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                      aria-pressed={mostrarSenha}
+                    >
+                      {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
                 />
-                <button
-                  type="button"
-                  onClick={() => setMostrarSenha(!mostrarSenha)}
-                  style={{ position: 'absolute', right: '1rem', bottom: erros.senha ? '2rem' : '0.9rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nhac-texto-claro)' }}
-                >
-                  {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
                 {senha.length > 0 && (
                   <div style={{ marginTop: '0.5rem', display: 'grid', gap: '0.25rem', fontSize: '0.8rem' }}>
                     <span style={{ color: senhaTemMinimoOito(senha) ? 'var(--nhac-sucesso, green)' : 'var(--nhac-texto-claro)' }}>
@@ -630,7 +640,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                   </div>
                 )}
               </div>
-              <div style={{ position: 'relative' }}>
+              <div>
                 <InputTexto
                   rotulo="Confirmar Senha"
                   tipo={mostrarConfirmarSenha ? 'text' : 'password'}
@@ -640,14 +650,17 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                   erro={erroCampo('confirmarSenha')}
                   onBlur={() => tocarCampo('confirmarSenha', confirmarSenha, validarConfirmarSenha(senha))}
                   obrigatorio
+                  sufixo={
+                    <button
+                      type="button"
+                      onClick={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
+                      aria-label={mostrarConfirmarSenha ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                      aria-pressed={mostrarConfirmarSenha}
+                    >
+                      {mostrarConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
                 />
-                <button
-                  type="button"
-                  onClick={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
-                  style={{ position: 'absolute', right: '1rem', bottom: erros.confirmarSenha ? '2rem' : '0.9rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nhac-texto-claro)' }}
-                >
-                  {mostrarConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
 
               <div>

@@ -82,28 +82,28 @@ const PaginaFinanceiro = () => {
                 </div>
               </Cartao>
               <Cartao className={estilos.cartaoKpi}>
-                <div className={estilos.iconeKpi} style={{ backgroundColor: '#E3F2FD', color: '#1976D2' }}><ShoppingCart size={24} /></div>
+                <div className={estilos.iconeKpi} style={{ backgroundColor: 'var(--nhac-info-fundo)', color: 'var(--nhac-info)' }}><ShoppingCart size={24} /></div>
                 <div className={estilos.infoKpi}>
                   <span>Pedidos no período</span>
                   <strong>{dados.resumo.numeroPedidos}</strong>
                 </div>
               </Cartao>
               <Cartao className={estilos.cartaoKpi}>
-                <div className={estilos.iconeKpi} style={{ backgroundColor: '#FFF3E0', color: '#F57C00' }}><Percent size={24} /></div>
+                <div className={estilos.iconeKpi} style={{ backgroundColor: 'var(--nhac-aviso-fundo)', color: 'var(--nhac-aviso)' }}><Percent size={24} /></div>
                 <div className={estilos.infoKpi}>
                   <span>Ticket Médio</span>
                   <strong>{formatarMoeda(dados.resumo.ticketMedio)}</strong>
                 </div>
               </Cartao>
               <Cartao className={estilos.cartaoKpi}>
-                <div className={estilos.iconeKpi} style={{ backgroundColor: '#E8F5E9', color: '#388E3C' }}><Activity size={24} /></div>
+                <div className={estilos.iconeKpi} style={{ backgroundColor: 'var(--nhac-sucesso-fundo)', color: 'var(--nhac-sucesso)' }}><Activity size={24} /></div>
                 <div className={estilos.infoKpi}>
                   <span>Produtos mais vendidos</span>
                   <strong>{dados.produtosMaisVendidos.length}</strong>
                 </div>
               </Cartao>
               <Cartao className={estilos.cartaoKpi}>
-                <div className={estilos.iconeKpi} style={{ backgroundColor: '#FFEBEE', color: '#D32F2F' }}><TrendingDown size={24} /></div>
+                <div className={estilos.iconeKpi} style={{ backgroundColor: 'var(--nhac-erro-fundo)', color: 'var(--nhac-erro)' }}><TrendingDown size={24} /></div>
                 <div className={estilos.infoKpi}>
                   <span>Taxa Cancel.</span>
                   <strong>{dados.resumo.taxaCancelamentoPercentual}%</strong>

@@ -4,35 +4,34 @@
   justify-content: center;
   padding: 4px 10px;
   border-radius: var(--raio-pilula);
-  font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
 .sucesso {
-  background-color: #D1FAE5;
-  color: #065F46;
+  background-color: var(--nhac-sucesso-fundo);
+  color: #1e6b39;
 }
 
 .erro {
-  background-color: #FEE2E2;
-  color: #991B1B;
+  background-color: var(--nhac-erro-fundo);
+  color: #9e2f27;
 }
 
 .aviso {
-  background-color: #FEF3C7;
-  color: #92400E;
+  background-color: var(--nhac-aviso-fundo);
+  color: #8a5400;
 }
 
 .info {
-  background-color: #DBEAFE;
-  color: #1E40AF;
+  background-color: var(--nhac-info-fundo);
+  color: #3a567f;
 }
 
 .neutro {
-  background-color: #F3F4F6;
-  color: #374151;
+  background-color: var(--nhac-fundo);
+  color: var(--nhac-texto-claro);
 }

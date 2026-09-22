@@ -46,6 +46,7 @@
   color: var(--nhac-texto);
   font-size: 1.25rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .gridGraficos {
@@ -86,6 +87,7 @@
 
 .tabela {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -121,6 +123,7 @@
 .valorProduto {
   font-weight: 600;
   color: var(--nhac-primaria);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 1024px) {

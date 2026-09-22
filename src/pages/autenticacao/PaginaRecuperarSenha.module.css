@@ -22,10 +22,15 @@
 }
 
 .logo {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--nhac-primaria);
   margin: 0;
+  line-height: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.logo img {
+  height: 44px;
+  width: auto;
 }
 
 .subtituloCabecalho {

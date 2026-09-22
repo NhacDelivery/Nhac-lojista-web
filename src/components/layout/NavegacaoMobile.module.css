@@ -21,19 +21,25 @@
   text-decoration: none;
   color: var(--nhac-texto-claro);
   gap: 4px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  transition: color 0.2s;
+  padding: 6px 8px;
+  border-radius: var(--raio-medio);
+  transition: color 0.2s, background-color 0.2s;
   flex: 1;
 }
 
 .link.ativo {
-  color: var(--nhac-primaria);
+  color: var(--nhac-sobre-primaria);
+  background-color: var(--nhac-primaria);
+  border-radius: 10px;
 }
 
 .rotulo {
   font-size: 10px;
   font-weight: 500;
+}
+
+.link.ativo .rotulo {
+  font-weight: 700;
 }
 
 @media (max-width: 767px) {

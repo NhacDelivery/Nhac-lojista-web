@@ -1,6 +1,7 @@
 :root {
-  /* Cores base */
+  /* Cores base — identidade do app Nhac (consumidor) */
   --nhac-fundo: #FFE7E5;
+  --nhac-fundo-suave: #FFF3F2;
   --nhac-primaria: #FF6961;
   --nhac-texto: #5D201C;
   --nhac-superficie: #FFFFFF;
@@ -11,40 +12,50 @@
   --nhac-primaria-claro: #FF8A84;
   --nhac-primaria-fundo: #FFF0EF;
   --nhac-primaria-fundo-hover: #FFE0DE;
+  --nhac-sobre-primaria: #FEE3E1;
 
   /* Derivadas - texto */
   --nhac-texto-claro: #8B4944;
-  --nhac-texto-sutil: #A86B67;
+  --nhac-texto-sutil: #8A5451;
   --nhac-texto-invertido: #FFFFFF;
+
+  /* Vocabulário do quadro de partidas */
+  --fonte-mono: 'Roboto Mono', ui-monospace, 'Cascadia Mono', monospace;
 
   /* Bordas e superfícies */
   --nhac-borda: #F5C4C1;
   --nhac-borda-foco: #FF6961;
-  --nhac-desabilitado: #D4A8A5;
-  --nhac-desabilitado-fundo: #F2D5D3;
+  --nhac-desabilitado: #C9BCBC;
+  --nhac-desabilitado-fundo: #F0E7E6;
   --nhac-superficie-elevada: #FFFFFF;
 
-  /* Status */
-  --nhac-sucesso: #4CAF50;
-  --nhac-sucesso-fundo: #E8F5E9;
-  --nhac-erro: #E53935;
-  --nhac-erro-fundo: #FFEBEE;
-  --nhac-aviso: #FF9800;
-  --nhac-aviso-fundo: #FFF3E0;
-  --nhac-info: #2196F3;
-  --nhac-info-fundo: #E3F2FD;
+  /* Alerta reservado a mudanças (faixa AGORA, alteração de rota) */
+  --nhac-alerta: #FF6961;
+  --nhac-faixa-agora: rgba(255, 105, 97, 0.16);
+
+  /* Status — matiz aquecido, texto escuro sobre tinta clara */
+  --nhac-sucesso: #2F8F4E;
+  --nhac-sucesso-fundo: #E7F4EA;
+  --nhac-erro: #C63F35;
+  --nhac-erro-fundo: #FCEBE9;
+  --nhac-aviso: #C77700;
+  --nhac-aviso-fundo: #FFF2DC;
+  --nhac-info: #4E6E9E;
+  --nhac-info-fundo: #EBF1F8;
 
   /* Raios de borda */
   --raio-pilula: 999px;
   --raio-cartao: 16px;
   --raio-modal: 20px;
+  --raio-grande: 20px;
   --raio-pequeno: 8px;
   --raio-medio: 12px;
 
-  /* Sombras */
-  --sombra-cartao: 0 2px 12px rgba(93, 32, 28, 0.08);
-  --sombra-elevada: 0 4px 24px rgba(93, 32, 28, 0.12);
-  --sombra-suave: 0 1px 4px rgba(93, 32, 28, 0.06);
+  /* Sombras — tinta marrom, sempre com deslocamento e desfoque */
+  --sombra-cartao: 0 3px 14px rgba(93, 32, 28, 0.10);
+  --sombra-elevada: 0 8px 28px rgba(93, 32, 28, 0.16);
+  --sombra-suave: 0 1px 4px rgba(93, 32, 28, 0.08);
+  --sombra-folha: 0 6px 20px rgba(93, 32, 28, 0.12);
 
   /* Espaçamentos */
   --espaco-xs: 4px;
@@ -54,8 +65,8 @@
   --espaco-xl: 32px;
   --espaco-2xl: 48px;
 
-  /* Tipografia */
-  --fonte-familia: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Tipografia — Roboto, a letra do app Nhac */
+  --fonte-familia: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --fonte-tamanho-xs: 0.75rem;
   --fonte-tamanho-sm: 0.875rem;
   --fonte-tamanho-base: 1rem;
@@ -72,6 +83,7 @@
   --transicao-rapida: 150ms ease;
   --transicao-media: 250ms ease;
   --transicao-lenta: 350ms ease;
+  --transicao-assentamento: 420ms cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Z-index */
   --z-dropdown: 100;

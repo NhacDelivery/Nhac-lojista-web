@@ -3,7 +3,6 @@
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 
 .desabilitado {
@@ -14,7 +13,7 @@
 .trilho {
   width: 44px;
   height: 24px;
-  background-color: #E5E7EB;
+  background-color: #ead9d7;
   border-radius: var(--raio-pilula);
   position: relative;
   transition: background-color 0.3s ease;
@@ -39,7 +38,7 @@
   background-color: white;
   border-radius: 50%;
   transition: transform 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(93, 32, 28, 0.25);
 }
 
 .botaoAtivo {

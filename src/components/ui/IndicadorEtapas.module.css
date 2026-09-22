@@ -1,18 +1,42 @@
 .container {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   width: 100%;
-  font-family: 'Inter', sans-serif;
 }
 
+/* Todos os passos têm a mesma largura, então os círculos ficam
+   equidistantes independentemente do tamanho do rótulo. */
 .etapaWrapper {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  position: relative;
-  z-index: 1;
+}
+
+/* Conector: liga o centro do círculo anterior ao centro deste círculo.
+   Como todos os passos têm a mesma largura, -50%/50% caem exatamente
+   nos centros dos círculos. */
+.etapaWrapper::before {
+  content: '';
+  position: absolute;
+  top: 15px; /* centro do círculo (32px / 2) menos 1px da espessura da linha */
+  left: -50%;
+  right: 50%;
+  height: 2px;
+  background-color: var(--nhac-desabilitado-fundo);
+  transition: background-color 0.3s ease;
+  z-index: 0;
+}
+
+.etapaWrapper:first-child::before {
+  display: none;
+}
+
+.conectorAtivo::before {
+  background-color: var(--nhac-primaria);
 }
 
 .clicavel {
@@ -24,6 +48,9 @@
 }
 
 .circulo {
+  position: relative;
+  z-index: 1; /* fica sobre o conector */
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -38,7 +65,7 @@
 
 .completa {
   background-color: var(--nhac-primaria);
-  color: var(--nhac-superficie);
+  color: var(--nhac-sobre-primaria);
   border: 2px solid var(--nhac-primaria);
 }
 
@@ -48,15 +75,16 @@
 }
 
 .pendente {
-  border: 2px solid #E5E7EB;
-  color: #9CA3AF;
+  border: 2px solid var(--nhac-borda);
+  color: var(--nhac-texto-sutil);
 }
 
 .rotulo {
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.3;
   color: var(--nhac-texto);
   text-align: center;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 
 .rotuloAtivo {
@@ -64,28 +92,11 @@
 }
 
 .rotuloPendente {
-  color: #9CA3AF;
-}
-
-.linha {
-  flex: 1;
-  height: 2px;
-  background-color: #E5E7EB;
-  margin: 0 12px;
-  margin-bottom: 24px; /* offset for the label height */
-  transition: background-color 0.3s ease;
-}
-
-.linhaCompleta {
-  background-color: var(--nhac-primaria);
+  color: var(--nhac-texto-sutil);
 }
 
 @media (max-width: 640px) {
   .rotulo {
     display: none;
-  }
-  
-  .linha {
-    margin-bottom: 0;
   }
 }

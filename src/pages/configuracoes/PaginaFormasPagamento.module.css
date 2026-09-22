@@ -62,6 +62,6 @@
 
 .sucessoMsg {
   font-size: 0.875rem;
-  color: #388E3C;
+  color: var(--nhac-sucesso);
   font-weight: 500;
 }

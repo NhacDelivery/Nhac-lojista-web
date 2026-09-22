@@ -20,7 +20,7 @@
 }
 
 .cabecalho {
-  padding: 24px 20px 24px 24px;
+  padding: 20px 16px 20px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -28,12 +28,16 @@
 }
 
 .logo {
-  color: var(--nhac-primaria);
-  font-size: 24px;
-  font-weight: 700;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
+  line-height: 0;
+}
+
+.logo img {
+  height: 34px;
+  width: auto;
+  display: block;
 }
 
 .acoesCabecalho {
@@ -93,23 +97,44 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 11px 14px;
   text-decoration: none;
   color: var(--nhac-texto);
   font-weight: 500;
-  border-radius: var(--raio-pilula);
-  transition: all 0.2s ease;
+  border-radius: 10px;
+  border: 1px solid var(--nhac-borda);
+  background-color: var(--nhac-superficie);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   white-space: nowrap;
 }
 
 .link:hover {
-  background-color: var(--nhac-primaria-fundo);
-  color: var(--nhac-primaria-hover);
+  background-color: var(--nhac-fundo);
+  color: var(--nhac-texto);
 }
 
 .link.ativo {
   background-color: var(--nhac-primaria);
-  color: var(--nhac-superficie);
+  border-color: var(--nhac-primaria);
+  color: var(--nhac-sobre-primaria);
+  font-weight: 600;
+}
+
+.link.ativo:hover {
+  background-color: var(--nhac-primaria-hover);
+  border-color: var(--nhac-primaria-hover);
+  color: var(--nhac-sobre-primaria);
+}
+
+/* marcador de portão na placa ativa */
+.link.ativo::after {
+  content: '';
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
 }
 
 .rotuloLink {
@@ -136,8 +161,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: var(--nhac-primaria-claro);
-  color: var(--nhac-superficie);
+  background-color: var(--nhac-primaria);
+  color: var(--nhac-sobre-primaria);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -166,11 +191,17 @@
   background-color: var(--nhac-fundo);
   border: 1px solid var(--nhac-borda);
   border-radius: var(--raio-pilula);
-  padding: 4px 8px;
+  padding: 4px 10px;
   font-size: 12px;
+  font-weight: 500;
   color: var(--nhac-texto-claro);
   margin-top: 4px;
   cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.seletorCargo:hover {
+  border-color: var(--nhac-primaria-claro);
 }
 
 

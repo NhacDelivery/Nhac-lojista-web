@@ -55,7 +55,14 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
   return (
     <aside className={`${estilos.barraLateral} ${abertaMobile ? estilos.aberta : ''} ${recolhida ? estilos.recolhida : ''}`}>
       <div className={estilos.cabecalho}>
-        <h1 className={estilos.logo}>Nhac Lojas</h1>
+        <h1 className={estilos.logo}>
+          <img
+            src={`${process.env.PUBLIC_URL}/nhac-logo.png`}
+            alt="Nhac Lojas"
+            width={132}
+            height={49}
+          />
+        </h1>
         <div className={estilos.acoesCabecalho}>
           {/* Botão de recolher — visível apenas no desktop */}
           {onToggleRecolher && (

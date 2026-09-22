@@ -3,9 +3,8 @@
   border-radius: var(--raio-cartao);
   box-shadow: var(--sombra-cartao);
   padding: 24px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: box-shadow 0.25s ease;
   border: 1px solid transparent;
-  font-family: 'Inter', sans-serif;
 }
 
 .clicavel {
@@ -13,8 +12,7 @@
 }
 
 .clicavel:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(93, 32, 28, 0.12);
+  box-shadow: var(--sombra-folha);
 }
 
 .destaque {

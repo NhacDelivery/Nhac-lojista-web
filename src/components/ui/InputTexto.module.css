@@ -3,7 +3,6 @@
   flex-direction: column;
   gap: 4px;
   width: 100%;
-  font-family: 'Inter', sans-serif;
 }
 
 .inputWrapper {
@@ -25,7 +24,7 @@
 }
 
 .comErro {
-  border-color: #EF4444;
+  border-color: var(--nhac-erro);
 }
 
 .icone {
@@ -42,6 +41,37 @@
   position: relative;
   height: 100%;
   justify-content: center;
+}
+
+/* Adorno à direita (ex.: botão de mostrar/ocultar senha).
+   Centralizado verticalmente dentro da pílula, sem position:absolute. */
+.sufixo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.sufixo > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  line-height: 0;
+  cursor: pointer;
+  color: var(--nhac-texto-claro);
+}
+
+.sufixo > button:hover {
+  color: var(--nhac-texto);
+}
+
+.sufixo > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .rotulo {
@@ -62,7 +92,7 @@
 }
 
 .asterisco {
-  color: #EF4444;
+  color: var(--nhac-erro);
 }
 
 .input {
@@ -84,7 +114,7 @@
 }
 
 .desabilitado .inputWrapper {
-  background-color: #F9FAFB;
+  background-color: var(--nhac-fundo);
 }
 
 .desabilitado .input {
@@ -92,7 +122,7 @@
 }
 
 .mensagemErro {
-  color: #EF4444;
+  color: var(--nhac-erro);
   font-size: 12px;
   margin-left: 16px;
   margin-top: 2px;

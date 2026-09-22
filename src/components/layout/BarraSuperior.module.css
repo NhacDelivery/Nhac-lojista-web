@@ -4,8 +4,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 2px 8px rgba(93, 32, 28, 0.05);
+  padding: 0 32px;
+  box-shadow: 0 3px 14px rgba(93, 32, 28, 0.07);
   position: sticky;
   top: 0;
   z-index: 90;
@@ -47,7 +47,7 @@
   height: 32px;
   border-radius: 50%;
   background-color: var(--nhac-primaria);
-  color: var(--nhac-superficie);
+  color: var(--nhac-sobre-primaria);
   display: flex;
   align-items: center;
   justify-content: center;

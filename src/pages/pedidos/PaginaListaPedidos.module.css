@@ -66,10 +66,11 @@
 }
 
 .filtroContagem {
-  background-color: rgba(0, 0, 0, 0.12);
+  background-color: rgba(93, 32, 28, 0.12);
   border-radius: var(--raio-pilula);
   padding: 1px 7px;
   font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .filtroAtivo .filtroContagem {
@@ -88,14 +89,26 @@
 .lista {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
+  background-color: var(--nhac-superficie);
+  border-radius: var(--raio-cartao);
+  box-shadow: var(--sombra-folha);
+  overflow: hidden;
 }
 
-.cartaoPedido {
+.lista .cartaoPedido {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid var(--nhac-borda);
+  padding: 16px 20px;
+}
+
+.lista .cartaoPedido:last-child {
+  border-bottom: none;
 }
 
 .infoPrincipal {
@@ -111,9 +124,17 @@
 }
 
 .codigo {
+  font-family: var(--fonte-mono);
   color: var(--nhac-texto);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  background-color: var(--nhac-fundo);
+  border: 1px dashed var(--nhac-borda);
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 .cliente {

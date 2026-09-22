@@ -62,7 +62,7 @@
 
 .erro {
   padding: 0.75rem;
-  background: #ffebee;
+  background: var(--nhac-erro-fundo, #ffebee);
   color: var(--nhac-erro, #e53935);
   border-radius: var(--raio-input, 8px);
   font-size: 0.875rem;

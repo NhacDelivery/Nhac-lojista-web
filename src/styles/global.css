@@ -74,6 +74,21 @@ ul, ol {
   list-style: none;
 }
 
+/* Superfícies do navegador herdadas do palette Nhac */
+::selection {
+  background-color: var(--nhac-primaria);
+  color: var(--nhac-sobre-primaria);
+}
+
+:focus-visible {
+  outline: 2px solid var(--nhac-primaria);
+  outline-offset: 2px;
+}
+
+body {
+  caret-color: var(--nhac-primaria);
+}
+
 /* Scrollbar estilizada */
 ::-webkit-scrollbar {
   width: 6px;
@@ -81,7 +96,7 @@ ul, ol {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--nhac-primaria-fundo);
+  background: var(--nhac-fundo);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -91,6 +106,30 @@ ul, ol {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--nhac-primaria-claro);
+}
+
+/* Vocabulário do quadro de partidas */
+.campoMicro {
+  font-family: var(--fonte-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--nhac-texto-claro);
+}
+
+.slugPedido {
+  font-family: var(--fonte-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--nhac-texto);
+  background-color: var(--nhac-fundo);
+  border: 1px dashed var(--nhac-borda);
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 /* Utilitários */

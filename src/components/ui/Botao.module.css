@@ -4,10 +4,10 @@
   justify-content: center;
   gap: 8px;
   border-radius: var(--raio-pilula);
-  font-family: 'Inter', sans-serif;
   font-weight: 600;
+  letter-spacing: 0.1px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   border: none;
   text-align: center;
   white-space: nowrap;
@@ -15,25 +15,35 @@
 
 .botao:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
-/* Variantes */
+/* Variantes — pílula plana do app Nhac, sem elevação */
 .primario {
   background-color: var(--nhac-primaria);
-  color: var(--nhac-superficie);
+  color: var(--nhac-sobre-primaria);
 }
 .primario:hover:not(:disabled) {
   background-color: var(--nhac-primaria-hover);
 }
+.primario:active:not(:disabled) {
+  background-color: var(--nhac-primaria-ativa);
+}
+.primario:disabled {
+  background-color: var(--nhac-desabilitado);
+  color: var(--nhac-sobre-primaria);
+}
 
 .secundario {
-  background-color: var(--nhac-superficie);
-  color: var(--nhac-primaria);
-  border: 2px solid var(--nhac-primaria);
+  background-color: transparent;
+  color: var(--nhac-texto);
+  border: 1.5px solid var(--nhac-texto);
 }
 .secundario:hover:not(:disabled) {
-  background-color: var(--nhac-primaria-fundo);
+  background-color: rgba(93, 32, 28, 0.06);
+}
+.secundario:disabled {
+  border-color: var(--nhac-desabilitado);
+  color: var(--nhac-desabilitado);
 }
 
 .fantasma {
@@ -43,13 +53,20 @@
 .fantasma:hover:not(:disabled) {
   background-color: var(--nhac-primaria-fundo);
 }
+.fantasma:disabled {
+  color: var(--nhac-desabilitado);
+}
 
 .perigo {
-  background-color: #EF4444;
-  color: var(--nhac-superficie);
+  background-color: var(--nhac-erro);
+  color: #ffffff;
 }
 .perigo:hover:not(:disabled) {
-  background-color: #DC2626;
+  background-color: #a9332b;
+}
+.perigo:disabled {
+  background-color: var(--nhac-desabilitado);
+  color: var(--nhac-sobre-primaria);
 }
 
 /* Tamanhos */

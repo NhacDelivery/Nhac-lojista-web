@@ -3,7 +3,6 @@
   flex-direction: column;
   gap: 4px;
   width: 100%;
-  font-family: 'Inter', sans-serif;
 }
 
 .seletorWrapper {
@@ -24,7 +23,7 @@
 }
 
 .comErro {
-  border-color: #EF4444;
+  border-color: var(--nhac-erro);
 }
 
 .campo {
@@ -54,7 +53,7 @@
 }
 
 .asterisco {
-  color: #EF4444;
+  color: var(--nhac-erro);
 }
 
 .select {
@@ -89,7 +88,7 @@
 }
 
 .desabilitado .seletorWrapper {
-  background-color: #F9FAFB;
+  background-color: var(--nhac-fundo);
 }
 
 .desabilitado .select {
@@ -97,7 +96,7 @@
 }
 
 .mensagemErro {
-  color: #EF4444;
+  color: var(--nhac-erro);
   font-size: 12px;
   margin-left: 16px;
   margin-top: 2px;
