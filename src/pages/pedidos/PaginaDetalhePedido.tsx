@@ -13,12 +13,12 @@ import {
   FLUXO_STATUS_PEDIDO,
 } from "../../utils/formatacao";
 import {
-  podeTransicionar,
   ehStatusFinal,
   podeCancelar,
-  ROTULO_ACAO_STATUS,
+  podeTransicionarComoLojista,
+  proximoStatusPermitidoParaLojista,
 } from "../../validators/statusPedido";
-import { atualizarStatusPedido, buscarPedido, PedidoDetalheLojistaDTO } from "../../services/api";
+import { atualizarStatusPedido, buscarPedido, despacharPedido, PedidoDetalheLojistaDTO } from "../../services/api";
 import { tratarErroApi } from "../../utils/errosApi";
 import { useToast } from "../../contexts/ToastContext";
 import {
@@ -29,6 +29,7 @@ import {
   CreditCard,
   Check,
   Ban,
+  Bike,
 } from "lucide-react";
 import estilos from "./PaginaDetalhePedido.module.css";
 
@@ -59,6 +60,7 @@ const PaginaDetalhePedido = () => {
   const [salvandoStatus, setSalvandoStatus] = useState(false);
   const [confirmacaoCancelamento, setConfirmacaoCancelamento] = useState(false);
   const [confirmacaoAvanco, setConfirmacaoAvanco] = useState<StatusPedido | null>(null);
+  const [despachando, setDespachando] = useState(false);
 
   const carregarPedido = useCallback(async () => {
     if (!id) return;
@@ -114,16 +116,17 @@ const PaginaDetalhePedido = () => {
   const cancelado = statusAtual === "CANCELADO";
   const podeCancelarAgora = podeCancelar(statusAtual);
   const statusFinal = ehStatusFinal(statusAtual);
+  const proximoStatusLojista = proximoStatusPermitidoParaLojista(statusAtual);
   const codigoPedido = pedido.id.slice(0, 8);
 
   const avancarFluxo = () => {
-    const proximoNatural = FLUXO_STATUS_PEDIDO[indiceAtual + 1];
-    if (!proximoNatural || !podeTransicionar(statusAtual, proximoNatural)) return;
-    setConfirmacaoAvanco(proximoNatural);
+    if (!proximoStatusLojista) return;
+    setConfirmacaoAvanco(proximoStatusLojista);
   };
 
   const aplicarTransicao = async (novoStatus: StatusPedido) => {
-    if (!podeTransicionar(statusAtual, novoStatus)) {
+    const ehCancelamentoPermitido = novoStatus === "CANCELADO" && podeCancelar(statusAtual);
+    if (!ehCancelamentoPermitido && !podeTransicionarComoLojista(statusAtual, novoStatus)) {
       mostrarToast("Transição de status inválida.");
       return;
     }
@@ -147,15 +150,32 @@ const PaginaDetalhePedido = () => {
     }
   };
 
+  const reenviarOferta = async () => {
+    setDespachando(true);
+    try {
+      const ofertas = await despacharPedido(pedido.id);
+      mostrarToast(
+        ofertas.length > 0
+          ? `Oferta reenviada para ${ofertas.length} entregador(es).`
+          : "Nenhum entregador disponível neste momento.",
+      );
+    } catch (err) {
+      const tratado = tratarErroApi(err);
+      mostrarToast(tratado.mensagemGeral ?? "Não foi possível buscar entregadores.");
+    } finally {
+      setDespachando(false);
+    }
+  };
+
   return (
     <LayoutPagina titulo={`Pedido #${codigoPedido}`}>
-      <div className={estilos.container}>
+      <div className={estilos.container} data-testid="e2e.order.detail">
         <header className={estilos.cabecalho}>
           <button className={estilos.botaoVoltar} onClick={() => navigate("/pedidos")} aria-label="Voltar">
             <ArrowLeft size={20} />
           </button>
           <h2 className={estilos.titulo}>Pedido #{codigoPedido}</h2>
-          <Emblema variante={statusInfo.variante} className={estilos.emblemaTopo}>
+          <Emblema variante={statusInfo.variante} className={estilos.emblemaTopo} data-testid="e2e.order.status">
             {statusInfo.rotulo}
           </Emblema>
         </header>
@@ -273,18 +293,15 @@ const PaginaDetalhePedido = () => {
                 <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--nhac-texto-claro)" }}>
                   Este pedido está em status final — não aceita mais alterações.
                 </p>
-              ) : (
+              ) : proximoStatusLojista ? (
                 <>
                   <Botao
+                    data-testid="e2e.order.advance"
                     larguraTotal
                     carregando={salvandoStatus}
-                    disabled={
-                      !FLUXO_STATUS_PEDIDO[indiceAtual + 1] ||
-                      !podeTransicionar(statusAtual, FLUXO_STATUS_PEDIDO[indiceAtual + 1])
-                    }
                     onClick={avancarFluxo}
                   >
-                    {ROTULO_ACAO_STATUS[statusAtual]}
+                    {statusAtual === "PENDENTE" ? "Confirmar pagamento" : "Iniciar preparo"}
                   </Botao>
 
                   {podeCancelarAgora && (
@@ -299,6 +316,26 @@ const PaginaDetalhePedido = () => {
                     </Botao>
                   )}
                 </>
+              ) : (
+                <div data-testid="e2e.order.delivery-state">
+                  <p style={{ marginTop: 0, fontSize: "0.875rem", color: "var(--nhac-texto-claro)" }}>
+                    {statusAtual === "PREPARANDO"
+                      ? "Pedido em preparo. Aguardando um entregador aceitar e coletar."
+                      : "Pedido coletado. A entrega agora é conduzida pelo entregador."}
+                  </p>
+                  {statusAtual === "PREPARANDO" && (
+                    <Botao
+                      data-testid="e2e.order.redispatch"
+                      larguraTotal
+                      variante="secundario"
+                      carregando={despachando}
+                      icone={<Bike size={16} />}
+                      onClick={reenviarOferta}
+                    >
+                      Buscar entregador novamente
+                    </Botao>
+                  )}
+                </div>
               )}
             </Cartao>
           </div>

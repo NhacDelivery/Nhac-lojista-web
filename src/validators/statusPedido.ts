@@ -18,6 +18,23 @@ export const TRANSICOES_STATUS: Record<StatusPedido, StatusPedido[]> = {
   CANCELADO: [],
 };
 
+/**
+ * O lojista confirma o pagamento manual e inicia o preparo. A coleta e a
+ * conclusão pertencem ao entregador e devem apenas ser acompanhadas aqui.
+ */
+export const PROXIMO_STATUS_LOJISTA: Partial<Record<StatusPedido, StatusPedido>> = {
+  PENDENTE: 'PAGO',
+  PAGO: 'PREPARANDO',
+};
+
+export function proximoStatusPermitidoParaLojista(status: StatusPedido): StatusPedido | null {
+  return PROXIMO_STATUS_LOJISTA[status] ?? null;
+}
+
+export function podeTransicionarComoLojista(de: StatusPedido, para: StatusPedido): boolean {
+  return proximoStatusPermitidoParaLojista(de) === para;
+}
+
 /** Status para os quais o pedido atual pode avançar (botões exibidos no UI). */
 export function proximosStatusPermitidos(status: StatusPedido): StatusPedido[] {
   return TRANSICOES_STATUS[status] ?? [];

@@ -56,7 +56,7 @@ const PaginaListaPedidos = () => {
 
   return (
     <LayoutPagina titulo="Pedidos">
-      <div className={estilos.container}>
+      <div className={estilos.container} data-testid="e2e.orders.root">
         <header className={estilos.cabecalho}>
           <h2 className={estilos.titulo}>Pedidos</h2>
           <button className={estilos.botaoSino} aria-label="Notificações">
@@ -98,11 +98,14 @@ const PaginaListaPedidos = () => {
                   key={pedido.id}
                   className={estilos.cartaoPedido}
                   onClick={() => navigate(`/pedidos/${pedido.id}`)}
+                  data-testid={`e2e.order.${pedido.id}`}
                 >
                   <div className={estilos.infoPrincipal}>
                     <div className={estilos.linhaTopo}>
                       <span className={estilos.codigo}>#{pedido.id.slice(0, 8)}</span>
-                      <Emblema variante={statusInfo.variante}>{statusInfo.rotulo}</Emblema>
+                      <Emblema variante={statusInfo.variante} data-testid={`e2e.order.${pedido.id}.status`}>
+                        {statusInfo.rotulo}
+                      </Emblema>
                     </div>
                     <span className={estilos.cliente}>{pedido.clienteNome}</span>
                     <span className={estilos.detalhe}>

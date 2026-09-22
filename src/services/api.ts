@@ -672,6 +672,13 @@ export async function atualizarStatusPedido(id: string, status: string): Promise
   });
 }
 
+/** Reenvia manualmente a oferta quando nenhum entregador aceitou o despacho automático. */
+export async function despacharPedido(id: string): Promise<unknown[]> {
+  return requisicao<unknown[]>(`/entregas/despachar/${id}`, {
+    method: 'POST',
+  });
+}
+
 /**
  * Cancela um pedido
  * PATCH /pedidos/{id}/cancelar

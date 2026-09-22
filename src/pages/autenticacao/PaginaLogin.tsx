@@ -108,6 +108,7 @@ export default function PaginaLogin() {
 
         <form className={estilos.formulario} onSubmit={lidarComSubmit} noValidate>
           <InputTexto
+            data-testid="e2e.login.email"
             rotulo="E-mail"
             tipo="email"
             valor={email}
@@ -121,6 +122,7 @@ export default function PaginaLogin() {
 
           <div style={{ position: 'relative' }}>
             <InputTexto
+              data-testid="e2e.login.password"
               rotulo="Senha"
               tipo={mostrarSenha ? 'text' : 'password'}
               valor={senha}
@@ -147,6 +149,7 @@ export default function PaginaLogin() {
           </div>
 
           <Botao
+            data-testid="e2e.login.submit"
             type="submit"
             variante="primario"
             larguraTotal
