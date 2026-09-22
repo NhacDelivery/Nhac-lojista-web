@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Cartao from '../../components/ui/Cartao';
@@ -7,6 +7,7 @@ import { StatusPedido } from '../../types';
 import { formatarMoeda, formatarHora, STATUS_PEDIDO_INFO } from '../../utils/formatacao';
 import { Bell, ChevronRight } from 'lucide-react';
 import { listarPedidos, PedidoResumoLojistaDTO } from '../../services/api';
+import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaListaPedidos.module.css';
 
 interface FiltroTag {
@@ -25,27 +26,42 @@ const FILTROS: FiltroTag[] = [
 
 const PaginaListaPedidos = () => {
   const navigate = useNavigate();
+  const { mostrarToast } = useToast();
   const [filtro, setFiltro] = useState<FiltroTag['valor']>('todos');
   const [pedidos, setPedidos] = useState<PedidoResumoLojistaDTO[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const idsConhecidos = useRef<Set<string> | null>(null);
 
-  useEffect(() => {
-    carregarPedidos();
-  }, []);
-
-  async function carregarPedidos() {
+  const carregarPedidos = useCallback(async (silencioso = false) => {
     try {
-      setCarregando(true);
-      setErro(null);
+      if (!silencioso) {
+        setCarregando(true);
+        setErro(null);
+      }
       const dados = await listarPedidos();
+      if (idsConhecidos.current) {
+        const novos = dados.filter((pedido) => !idsConhecidos.current?.has(pedido.id));
+        if (novos.length > 0) {
+          mostrarToast(novos.length === 1 ? 'Novo pedido recebido.' : `${novos.length} novos pedidos recebidos.`);
+        }
+      }
+      idsConhecidos.current = new Set(dados.map((pedido) => pedido.id));
       setPedidos(dados);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : 'Erro ao carregar pedidos');
+      if (!silencioso) {
+        setErro(err instanceof Error ? err.message : 'Erro ao carregar pedidos');
+      }
     } finally {
-      setCarregando(false);
+      if (!silencioso) setCarregando(false);
     }
-  }
+  }, [mostrarToast]);
+
+  useEffect(() => {
+    void carregarPedidos();
+    const intervalo = window.setInterval(() => void carregarPedidos(true), 10000);
+    return () => window.clearInterval(intervalo);
+  }, [carregarPedidos]);
 
   const contagemPorFiltro = (valor: FiltroTag['valor']) =>
     valor === 'todos' ? pedidos.length : pedidos.filter(p => p.status === valor).length;
