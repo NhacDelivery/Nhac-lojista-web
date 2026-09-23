@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Cartao from '../../components/ui/Cartao';
 import Botao from '../../components/ui/Botao';
@@ -29,24 +29,30 @@ const PaginaFinanceiro = () => {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
+  const sequencia = useRef(0);
   const CORES_PIE = ['#FF6961', '#FF8A84', '#E85D56', '#5D201C', '#8B4944', '#D4A8A5'];
 
   const carregar = useCallback(async () => {
+    const atual = ++sequencia.current;
     try {
       setCarregando(true);
       setErro(null);
       const resposta = await buscarFinanceiro(periodo);
+      if (atual !== sequencia.current) return;
       setDados(resposta);
     } catch (err) {
+      if (atual !== sequencia.current) return;
       const tratado = tratarErroApi(err);
       setErro(tratado.mensagemGeral ?? 'Não foi possível carregar os dados financeiros.');
     } finally {
-      setCarregando(false);
+      if (atual === sequencia.current) setCarregando(false);
     }
   }, [periodo]);
 
   useEffect(() => {
     carregar();
+    const contador = sequencia;
+    return () => { contador.current++; };
   }, [carregar]);
 
   return (

@@ -99,6 +99,7 @@ export default function PaginaRecuperarSenha() {
       const tratado = tratarErroApi(err);
       // Código inválido/expirado → voltar para a etapa de código
       if (tratado.erroCodigo) {
+        setCodigo('');
         setErros({ codigo: tratado.erroCodigo });
         setEtapa('codigo');
       } else {

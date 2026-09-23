@@ -63,3 +63,7 @@ Thumbs.db
 *.tar.xz
 *.tar.zst
 ```
+# Diagnóstico de testes locais
+/test-results/
+/playwright-report/
+!.env.example

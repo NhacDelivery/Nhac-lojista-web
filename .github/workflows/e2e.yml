@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - 'e2e/**'
-      - 'src/pages/autenticacao/**'
+      - 'src/**'
       - 'src/pages/pedidos/**'
       - 'src/services/api.ts'
       - 'src/validators/statusPedido.ts'
@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: NhacDelivery/backend-nhac
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: main
           path: backend-nhac
 
       - name: Setup Java 25

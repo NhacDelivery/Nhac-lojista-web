@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import InputTexto from '../../components/ui/InputTexto';
 import Botao from '../../components/ui/Botao';
@@ -9,46 +9,46 @@ import Toggle from '../../components/ui/Toggle';
 import { CATEGORIAS_PRODUTO } from '../../dados/categorias';
 import { formatarMoeda } from '../../utils/formatacao';
 import { Plus, Search, Edit2 } from 'lucide-react';
-import { listarProdutos, desativarProduto, ativarProduto, ProdutoLojistaDTO } from '../../services/api';
+import { listarProdutosPagina, desativarProduto, ativarProduto } from '../../services/api';
 import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
+import { usePagina } from '../../hooks/usePagina';
+import Paginacao from '../../components/ui/Paginacao';
 import estilos from './PaginaListaProdutos.module.css';
 
 const PaginaListaProdutos = () => {
   const navigate = useNavigate();
   const { mostrarToast } = useToast();
-  const [produtos, setProdutos] = useState<ProdutoLojistaDTO[]>([]);
-  const [busca, setBusca] = useState('');
-  const [categoriaFiltro, setCategoriaFiltro] = useState('');
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-
+  const [params, setParams] = useSearchParams();
+  const [busca, setBusca] = useState(params.get('q') || '');
+  const [compondo, setCompondo] = useState(false);
+  const [alterando, setAlterando] = useState<string | null>(null);
+  const categoriaFiltro = params.get('categoria') || '';
+  const pagina = Math.max(0, Number(params.get('page')) || 0);
+  const query = params.get('q') || '';
+  const atualizarFiltro = useCallback((chave: string, valor: string) => {
+    setParams(atual => { const p = new URLSearchParams(atual); p.delete('page'); if (valor) p.set(chave, valor); else p.delete(chave); return p; }, { replace: true });
+  }, [setParams]);
+  useEffect(() => { setBusca(query); }, [query]);
   useEffect(() => {
-    carregarProdutos();
-  }, []);
-
-  async function carregarProdutos() {
-    try {
-      setCarregando(true);
-      setErro(null);
-      const dados = await listarProdutos();
-      setProdutos(dados);
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : 'Erro ao carregar produtos');
-    } finally {
-      setCarregando(false);
-    }
-  }
+    if (compondo || busca === query) return;
+    const timer = window.setTimeout(() => atualizarFiltro('q', busca), busca ? 300 : 0);
+    return () => window.clearTimeout(timer);
+  }, [busca, query, compondo, atualizarFiltro]);
+  const setCategoriaFiltro = (categoria: string) => atualizarFiltro('categoria', categoria);
+  const buscar = useCallback(() => listarProdutosPagina(pagina, query, categoriaFiltro), [pagina, query, categoriaFiltro]);
+  const { dados: produtos, setDados: setProdutos, carregando, erro, total, totalPaginas, recarregar } = usePagina(buscar);
 
   const handleToggleAtivo = async (id: string, novoEstado: boolean) => {
-    if (!id) return;
+    if (!id || alterando) return;
+    setAlterando(id);
     try {
       if (novoEstado) {
         await ativarProduto(id);
       } else {
         await desativarProduto(id);
       }
-      setProdutos(produtos.map(p => p.id === id ? { ...p, ativo: novoEstado } : p));
+      setProdutos(atual => atual.map(p => p.id === id ? { ...p, ativo: novoEstado } : p));
     } catch (err) {
       const tratado = tratarErroApi(err);
       if (tratado.toastGenerico) {
@@ -56,22 +56,18 @@ const PaginaListaProdutos = () => {
       } else {
         mostrarToast(tratado.mensagemGeral ?? 'Erro ao alterar status do produto.');
       }
-    }
+    } finally { setAlterando(null); }
   };
 
-  const produtosFiltrados = produtos.filter(p => {
-    const matchBusca = p.nome.toLowerCase().includes(busca.toLowerCase());
-    const matchCategoria = categoriaFiltro ? p.categoriaMenu === categoriaFiltro : true;
-    return matchBusca && matchCategoria;
-  });
+  const produtosFiltrados = produtos;
 
   return (
     <LayoutPagina titulo="Produtos">
       <div className={estilos.container}>
         <header className={estilos.cabecalho}>
           <h2 className={estilos.titulo}>Seus Produtos</h2>
-          <Botao 
-            onClick={() => navigate('/produtos/novo')} 
+          <Botao
+            onClick={() => navigate('/produtos/novo')}
             icone={<Plus size={20} />}
           >
             Novo produto
@@ -80,11 +76,14 @@ const PaginaListaProdutos = () => {
 
         <div className={estilos.filtros}>
           <div className={estilos.buscaWrapper}>
-            <InputTexto 
-              rotulo=""
-              valor={busca} 
-              aoMudar={setBusca} 
-              placeholder="Buscar produtos..." 
+            <InputTexto
+              rotulo="Buscar produtos"
+              type="search"
+              onCompositionStart={() => setCompondo(true)}
+              onCompositionEnd={() => setCompondo(false)}
+              valor={busca}
+              aoMudar={setBusca}
+              placeholder="Buscar produtos..."
               icone={<Search size={20} />}
             />
           </div>
@@ -115,7 +114,7 @@ const PaginaListaProdutos = () => {
           </div>
         ) : erro ? (
           <div className={estilos.vazio}>
-            <p>{erro}</p>
+            <p role="alert">{erro}</p><button onClick={() => recarregar()}>Tentar novamente</button>
           </div>
         ) : produtosFiltrados.length === 0 ? (
           <div className={estilos.vazio}>
@@ -127,7 +126,7 @@ const PaginaListaProdutos = () => {
               return (
                 <Cartao key={produto.id} className={estilos.cartaoProduto}>
                   <div className={estilos.imagemWrapper}>
-                    <img src={produto.imagemUrl || 'https://placehold.co/400x300/FF6961/FFFFFF?text=Sem+Imagem'} alt={produto.nome} className={estilos.imagem} />
+                    <img src={produto.imagemUrl || '/nhac-logo.png'} alt={produto.nome} className={estilos.imagem} />
                   </div>
                   <div className={estilos.info}>
                     <div className={estilos.linha1}>
@@ -136,14 +135,16 @@ const PaginaListaProdutos = () => {
                     </div>
                     <p className={estilos.preco}>{formatarMoeda(produto.preco)}</p>
                     <div className={estilos.acoes}>
-                      <Toggle 
-                        ativo={produto.ativo} 
-                        aoMudar={(v) => produto.id && handleToggleAtivo(produto.id, v)} 
+                      <Toggle
+                        ativo={produto.ativo}
+                        desabilitado={alterando !== null}
+                        aoMudar={(v) => produto.id && handleToggleAtivo(produto.id, v)}
                         rotulo={produto.ativo ? 'Ativo' : 'Inativo'}
                       />
-                      <Botao 
-                        variante="fantasma" 
-                        icone={<Edit2 size={20} />} 
+                      <Botao
+                        variante="fantasma"
+                        icone={<Edit2 size={20} />}
+                        aria-label={`Editar ${produto.nome}`}
                         onClick={() => navigate(`/produtos/${produto.id}`)}
                       />
                     </div>
@@ -153,6 +154,8 @@ const PaginaListaProdutos = () => {
             })}
           </div>
         )}
+        <Paginacao pagina={pagina} totalPaginas={totalPaginas} total={total} carregando={carregando}
+          aoMudar={page => setParams(atual => { const p = new URLSearchParams(atual); p.set('page', String(page)); return p; })} />
       </div>
     </LayoutPagina>
   );

@@ -5,7 +5,7 @@ import InputTexto from '../../components/ui/InputTexto';
 import Seletor from '../../components/ui/Seletor';
 import Botao from '../../components/ui/Botao';
 import Cartao from '../../components/ui/Cartao';
-import { listarFuncionarios, criarFuncionario, atualizarFuncionario } from '../../services/api';
+import { buscarFuncionario, criarFuncionario, atualizarFuncionario } from '../../services/api';
 import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaFormularioFuncionario.module.css';
@@ -30,6 +30,7 @@ const PaginaFormularioFuncionario = () => {
   const [senha, setSenha] = useState('');
   const [carregandoDados, setCarregandoDados] = useState(ehEdicao);
   const [salvando, setSalvando] = useState(false);
+  const [registroCarregado, setRegistroCarregado] = useState(!ehEdicao);
   const [erro, setErro] = useState('');
 
   useEffect(() => {
@@ -40,9 +41,9 @@ const PaginaFormularioFuncionario = () => {
     (async () => {
       try {
         setCarregandoDados(true);
-        const funcionarios = await listarFuncionarios();
-        const func = funcionarios.find(f => f.id === id);
+        const func = await buscarFuncionario(id);
         if (func) {
+          setRegistroCarregado(true);
           setNome(func.nomeCompleto);
           setEmail(func.email);
           setTelefone(func.telefone || '');
@@ -61,6 +62,11 @@ const PaginaFormularioFuncionario = () => {
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (salvando || !registroCarregado) return;
+    if (!nome.trim() || !cargo || (!ehEdicao && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^(?=.*[a-zA-Z])(?=.*\d).{8,}$/.test(senha)))) {
+      setErro('Preencha nome, cargo, e-mail válido e senha com 8 caracteres, letra e número.');
+      return;
+    }
     setSalvando(true);
     setErro('');
     try {
@@ -93,7 +99,7 @@ const PaginaFormularioFuncionario = () => {
 
   return (
     <LayoutPagina titulo={ehEdicao ? 'Editar Funcionário' : 'Novo Funcionário'}>
-      <form onSubmit={handleSalvar} className={estilos.form}>
+      <form noValidate onSubmit={handleSalvar} className={estilos.form}>
         <Cartao className={estilos.cartao}>
           <h3 className={estilos.tituloSecao}>Dados do Funcionário</h3>
 
@@ -138,7 +144,7 @@ const PaginaFormularioFuncionario = () => {
 
         <div className={estilos.acoes}>
           <Botao type="button" variante="fantasma" onClick={() => navigate('/funcionarios')}>Cancelar</Botao>
-          <Botao type="submit" variante="primario" carregando={salvando}>Salvar</Botao>
+          <Botao type="submit" variante="primario" carregando={salvando} disabled={!registroCarregado}>Salvar</Botao>
         </div>
       </form>
     </LayoutPagina>

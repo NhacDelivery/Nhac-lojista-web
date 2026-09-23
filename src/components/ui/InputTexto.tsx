@@ -28,7 +28,11 @@ const InputTexto = ({
   placeholder,
   ...props
 }: PropsInputTexto) => {
-  const tipoFinal = tipo || type;
+  const [visivel, setVisivel] = useState(false);
+  const tipoBase = tipo || type;
+  const tipoFinal = tipoBase === 'password' && visivel ? 'text' : tipoBase;
+  const gerado = React.useId();
+  const id = props.id || gerado;
   const [focado, setFocado] = useState(false);
   const temValor = valor !== undefined && valor !== null && valor !== '';
 
@@ -44,26 +48,31 @@ const InputTexto = ({
 
   return (
     <div className={`${estilos.container} ${disabled ? estilos.desabilitado : ''}`}>
-      <div 
+      <div
         className={`${estilos.inputWrapper} ${focado ? estilos.focado : ''} ${erro ? estilos.comErro : ''}`}
-        onClick={() => inputRef.current?.focus()}
+
       >
         {icone && <div className={estilos.icone}>{icone}</div>}
-        
+
         <div className={estilos.campo}>
           {rotulo && (
-            <label className={`${estilos.rotulo} ${(focado || temValor || placeholder) ? estilos.rotuloFlutuante : ''}`}>
+            <label htmlFor={id} className={`${estilos.rotulo} ${(focado || temValor || placeholder) ? estilos.rotuloFlutuante : ''}`}>
               {rotulo} {obrigatorio && <span className={estilos.asterisco}>*</span>}
             </label>
           )}
-          
+
           <input
             ref={inputRef}
+            id={id}
+            aria-label={!rotulo ? (props['aria-label'] || placeholder) : undefined}
+            aria-invalid={!!erro}
+            aria-describedby={erro ? `${id}-erro` : props['aria-describedby']}
+            required={obrigatorio}
             type={tipoFinal}
             value={valor}
             onChange={lidarComMudanca}
-            onFocus={() => setFocado(true)}
-            onBlur={() => setFocado(false)}
+            onFocus={e => { setFocado(true); props.onFocus?.(e); }}
+            onBlur={e => { setFocado(false); props.onBlur?.(e); }}
             disabled={disabled}
             placeholder={rotulo ? (focado ? placeholder : undefined) : placeholder}
             className={`${estilos.input} ${!rotulo ? estilos.semRotulo : ''}`}
@@ -71,6 +80,8 @@ const InputTexto = ({
           />
         </div>
 
+        {tipoBase === 'password' && !sufixo && <button type="button" aria-label={visivel ? 'Ocultar senha' : 'Mostrar senha'} aria-pressed={visivel} onClick={() => setVisivel(v => !v)}>{visivel ? 'Ocultar' : 'Mostrar'}</button>}
+        {tipoBase === 'search' && valor && <button type="button" aria-label="Limpar busca" onClick={() => { aoMudar(''); inputRef.current?.focus(); }}>×</button>}
         {/* Adorno à direita: fica dentro da pílula, alinhado ao centro do campo */}
         {sufixo && (
           <div className={estilos.sufixo} onMouseDown={(e) => e.preventDefault()}>
@@ -78,8 +89,8 @@ const InputTexto = ({
           </div>
         )}
       </div>
-      
-      {erro && <span className={estilos.mensagemErro}>{erro}</span>}
+
+      {erro && <span id={`${id}-erro`} role="alert" className={estilos.mensagemErro}>{erro}</span>}
     </div>
   );
 };

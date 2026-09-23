@@ -62,10 +62,10 @@ const PaginaDetalhePedido = () => {
   const [confirmacaoAvanco, setConfirmacaoAvanco] = useState<StatusPedido | null>(null);
   const [despachando, setDespachando] = useState(false);
 
-  const carregarPedido = useCallback(async () => {
+  const carregarPedido = useCallback(async (silencioso = false) => {
     if (!id) return;
     try {
-      setCarregando(true);
+      if (!silencioso) setCarregando(true);
       setErro(null);
       const dados = await buscarPedido(id);
       setPedido(dados);
@@ -79,8 +79,10 @@ const PaginaDetalhePedido = () => {
   }, [id]);
 
   useEffect(() => {
-    carregarPedido();
-  }, [carregarPedido]);
+    if (!salvandoStatus && !despachando) void carregarPedido(true);
+    const timer = window.setInterval(() => { if (!salvandoStatus && !despachando && document.visibilityState === 'visible') void carregarPedido(true); }, 15000);
+    return () => window.clearInterval(timer);
+  }, [carregarPedido, salvandoStatus, despachando]);
 
   if (carregando) {
     return (
@@ -130,6 +132,7 @@ const PaginaDetalhePedido = () => {
       mostrarToast("Transição de status inválida.");
       return;
     }
+    if (salvandoStatus) return;
     setSalvandoStatus(true);
     try {
       await atualizarStatusPedido(pedido.id, novoStatus);
@@ -139,7 +142,7 @@ const PaginaDetalhePedido = () => {
       const tratado = tratarErroApi(err);
       if (tratado.transicaoInvalida) {
         mostrarToast(tratado.mensagemGeral ?? "Transição de status inválida.");
-        setStatus(pedido.status as StatusPedido);
+        await carregarPedido(true);
       } else {
         mostrarToast(tratado.mensagemGeral ?? "Erro ao atualizar status.");
       }
@@ -151,6 +154,7 @@ const PaginaDetalhePedido = () => {
   };
 
   const reenviarOferta = async () => {
+    if (despachando) return;
     setDespachando(true);
     try {
       const ofertas = await despacharPedido(pedido.id);
@@ -323,6 +327,7 @@ const PaginaDetalhePedido = () => {
                       ? "Pedido em preparo. Aguardando um entregador aceitar e coletar."
                       : "Pedido coletado. A entrega agora é conduzida pelo entregador."}
                   </p>
+                  {podeCancelarAgora && <Botao variante="perigo" disabled={salvandoStatus} onClick={() => setConfirmacaoCancelamento(true)}>Cancelar pedido</Botao>}
                   {statusAtual === "PREPARANDO" && (
                     <Botao
                       data-testid="e2e.order.redispatch"

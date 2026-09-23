@@ -1,46 +1,42 @@
-# Getting Started with Create React App
+# Nhac Lojas
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Painel React/TypeScript integrado ao [backend Nhac](https://github.com/NhacDelivery/backend-nhac). Login e cadastro com verificação, operação da loja, pedidos, produtos e adicionais, equipe, chat com clientes/entregadores, financeiro e configurações.
 
-## Available Scripts
+## Executar
 
-In the project directory, you can run:
+Requisitos: Node 22, npm e backend acessível. Para subir o backend local, siga as instruções do repositório Java (Java 25 e MariaDB).
 
-### `npm start`
+```bash
+npm ci
+cp .env.example .env.local
+npm start
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Configure `REACT_APP_API_URL` com a URL terminada em `/api/v1`. `REACT_APP_WS_URL` é opcional e deriva da API quando omitida. Em produção, ambos precisam usar HTTPS e o backend deve aceitar a origem do painel. A hospedagem precisa redirecionar rotas do frontend para `index.html`.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Validação
 
-### `npm test`
+```bash
+npm run lint
+CI=true npm test -- --watchAll=false --runInBand
+npm run build
+npx playwright install --with-deps chromium
+npm start
+# Em outro terminal:
+npx playwright test e2e/operacao-ui.spec.ts
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+`operacao-ui.spec.ts` testa no navegador com respostas controladas: edição da equipe, paginação/filtros, confirmação sem duplicação, horários em celular e recuperação de erro. Não comprova integração com o backend.
 
-### `npm run build`
+O teste `lojista-pedido.spec.ts` usa o backend real com perfil `e2e`, MariaDB isolado e fixtures. Rode com `RUN_E2E=true npm run test:e2e`. Nunca aponte para produção. O workflow `.github/workflows/e2e.yml` prepara esse ambiente e publica logs e traces.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Contratos e limitações
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- Pedidos, produtos e equipe usam páginas do servidor. Pedidos e painel atualizam a cada 15 segundos na aba visível.
+- Chat restaura assinaturas ao reconectar, carrega histórico em páginas e distingue cliente/entregador. Enviar ao WebSocket não equivale a confirmar persistência: o backend precisa estar conectado e autorizar a conversa.
+- Horários, taxa, tempos, raio, entrega própria e retirada são editáveis em Configurações → Horários e entrega.
+- Imagens, e-mail e pagamentos precisam dos serviços configurados no backend. Dados de demonstração não substituem a API em produção.
+- O backend atual trata cargo de funcionário como rótulo, sem RBAC por cargo. A gestão de equipe é protegida pelo servidor e restrita ao dono, mas não há garantia de separação gerente/atendente. O seletor local de cargo foi removido.
+- O painel segue o fluxo existente de iniciar preparo; coleta/conclusão pertencem ao entregador. Estorno de pagamentos exige fluxo próprio no backend.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+Veja [DESIGN.md](DESIGN.md), [UX-CONTRACT.md](UX-CONTRACT.md) e [specs/003-auditoria-operacao.md](specs/003-auditoria-operacao.md) para contexto, evidências e limites da validação.

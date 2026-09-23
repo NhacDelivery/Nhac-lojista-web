@@ -10,24 +10,18 @@ export interface PropsToggle {
 
 const Toggle = ({ ativo, aoMudar, rotulo, desabilitado = false }: PropsToggle) => {
   return (
-    <label className={`${estilos.container} ${desabilitado ? estilos.desabilitado : ''}`}>
-      <div 
+    <span className={`${estilos.container} ${desabilitado ? estilos.desabilitado : ''}`}>
+      <button type="button" disabled={desabilitado} aria-label={rotulo || "Ativar"}
         className={`${estilos.trilho} ${ativo ? estilos.ativo : ''}`}
         onClick={() => !desabilitado && aoMudar(!ativo)}
         role="switch"
         aria-checked={ativo}
-        tabIndex={desabilitado ? -1 : 0}
-        onKeyDown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && !desabilitado) {
-            e.preventDefault();
-            aoMudar(!ativo);
-          }
-        }}
+
       >
         <div className={`${estilos.botao} ${ativo ? estilos.botaoAtivo : ''}`} />
-      </div>
-      {rotulo && <span className={estilos.rotulo} onClick={() => !desabilitado && aoMudar(!ativo)}>{rotulo}</span>}
-    </label>
+      </button>
+      {rotulo && <span className={estilos.rotulo}>{rotulo}</span>}
+    </span>
   );
 };
 

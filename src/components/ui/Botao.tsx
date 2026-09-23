@@ -34,7 +34,7 @@ const Botao = ({
   const estaDesabilitado = desabilitado || disabled || carregando;
 
   return (
-    <button className={classes} disabled={estaDesabilitado} {...props}>
+    <button type="button" aria-busy={carregando} className={classes} disabled={estaDesabilitado} {...props}>
       {carregando ? (
         <Loader2 className={estilos.iconeCarregando} size={20} />
       ) : (

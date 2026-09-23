@@ -15,15 +15,15 @@ const BarraSuperior: React.FC<BarraSuperiorProps> = ({ titulo, onAbrirMenu, reco
   return (
     <header className={estilos.barraSuperior}>
       <div className={estilos.esquerda}>
-        <button 
-          className={`${estilos.botaoMenu} ${recolhida ? estilos.botaoMenuVisivelDesktop : ''}`} 
+        <button aria-label="Abrir menu"
+          className={`${estilos.botaoMenu} ${recolhida ? estilos.botaoMenuVisivelDesktop : ''}`}
           onClick={onAbrirMenu}
         >
           <Menu size={24} />
         </button>
         <h2 className={estilos.titulo}>{titulo}</h2>
       </div>
-      
+
       {usuario && (
         <div className={estilos.direita}>
           <div className={estilos.avatar}>

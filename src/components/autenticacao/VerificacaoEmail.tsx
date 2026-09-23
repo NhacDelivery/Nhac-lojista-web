@@ -113,6 +113,7 @@ export default function VerificacaoEmail({
     } catch (err) {
       const tratado = tratarErroApi(err);
       if (tratado.erroCodigo) {
+        setCodigo('');
         setErroCodigo(tratado.erroCodigo);
       } else if (tratado.sugerirLogin) {
         setBloqueado(true);

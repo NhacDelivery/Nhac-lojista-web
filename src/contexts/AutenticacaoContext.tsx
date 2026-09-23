@@ -10,7 +10,6 @@ interface ContextoAutenticacao {
   entrar: (email: string, senha: string) => Promise<void>;
   definirSessao: (token: string, dados: Partial<Usuario> & { id: string; nomeCompleto: string }) => void;
   sair: () => void;
-  trocarCargo: (cargo: Cargo) => void;
 }
 
 export const AutenticacaoContext = createContext<ContextoAutenticacao | undefined>(undefined);
@@ -45,7 +44,14 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({ childr
     const tokenSalvo = localStorage.getItem('@nhac:token');
 
     if (usuarioSalvo && tokenSalvo) {
-      setUsuario(JSON.parse(usuarioSalvo));
+      try {
+        const salvo = JSON.parse(usuarioSalvo);
+        if (!salvo?.id || !salvo?.nomeCompleto) throw new Error('Sessão inválida');
+        setUsuario(salvo);
+      } catch {
+        localStorage.removeItem('@nhac:usuario');
+        localStorage.removeItem('@nhac:token');
+      }
     }
     setCarregando(false);
   }, []);
@@ -91,16 +97,8 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({ childr
     localStorage.removeItem('@nhac:token');
   };
 
-  const trocarCargo = (cargo: Cargo) => {
-    if (usuario) {
-      const novoUsuario = { ...usuario, cargo };
-      setUsuario(novoUsuario);
-      localStorage.setItem('@nhac:usuario', JSON.stringify(novoUsuario));
-    }
-  };
-
   return (
-    <AutenticacaoContext.Provider value={{ usuario, carregando, entrar, definirSessao, sair, trocarCargo }}>
+    <AutenticacaoContext.Provider value={{ usuario, carregando, entrar, definirSessao, sair }}>
       {children}
     </AutenticacaoContext.Provider>
   );

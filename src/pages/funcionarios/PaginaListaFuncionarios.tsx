@@ -1,43 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Botao from '../../components/ui/Botao';
 import Cartao from '../../components/ui/Cartao';
 import Avatar from '../../components/ui/Avatar';
 import Emblema from '../../components/ui/Emblema';
 import ModalConfirmacao from '../../components/ui/ModalConfirmacao';
-import { listarFuncionarios, desativarFuncionario, reativarFuncionario, FuncionarioResponseDTO } from '../../services/api';
+import { listarFuncionariosPagina, desativarFuncionario, reativarFuncionario } from '../../services/api';
 import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
 import { formatarData } from '../../utils/formatacao';
 import { Plus, Edit2, Trash2, RotateCcw } from 'lucide-react';
+import { usePagina } from '../../hooks/usePagina';
+import Paginacao from '../../components/ui/Paginacao';
 import estilos from './PaginaListaFuncionarios.module.css';
 
 const PaginaListaFuncionarios = () => {
   const navigate = useNavigate();
   const { mostrarToast } = useToast();
-  const [funcionarios, setFuncionarios] = useState<FuncionarioResponseDTO[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  const pagina = Math.max(0, Number(params.get('page')) || 0);
+  const buscar = useCallback(() => listarFuncionariosPagina(pagina), [pagina]);
+  const { dados: funcionarios, setDados: setFuncionarios, carregando, erro, total, totalPaginas, recarregar: carregar } = usePagina(buscar);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(null);
-
-  const carregar = useCallback(async () => {
-    try {
-      setCarregando(true);
-      setErro(null);
-      const dados = await listarFuncionarios();
-      setFuncionarios(dados);
-    } catch (err) {
-      const tratado = tratarErroApi(err);
-      setErro(tratado.mensagemGeral ?? 'Não foi possível carregar os funcionários.');
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
+  const [alterando, setAlterando] = useState(false);
 
   const getCorCargo = (cargo: string): 'info' | 'aviso' | 'neutro' => {
     switch (cargo.toLowerCase()) {
@@ -48,27 +34,32 @@ const PaginaListaFuncionarios = () => {
   };
 
   const handleExcluir = async (id: string) => {
+    if (alterando) return;
+    setAlterando(true);
     try {
       await desativarFuncionario(id);
-      setFuncionarios(funcionarios.map(f => f.id === id ? { ...f, ativo: false } : f));
+      setFuncionarios(atual => atual.map(f => f.id === id ? { ...f, ativo: false } : f));
       mostrarToast('Funcionário desativado.');
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(tratado.mensagemGeral ?? 'Não foi possível desativar o funcionário.');
     } finally {
+      setAlterando(false);
       setConfirmandoExclusao(null);
     }
   };
 
   const handleReativar = async (id: string) => {
+    if (alterando) return;
+    setAlterando(true);
     try {
       await reativarFuncionario(id);
-      setFuncionarios(funcionarios.map(f => f.id === id ? { ...f, ativo: true } : f));
+      setFuncionarios(atual => atual.map(f => f.id === id ? { ...f, ativo: true } : f));
       mostrarToast('Funcionário reativado.');
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(tratado.mensagemGeral ?? 'Não foi possível reativar o funcionário.');
-    }
+    } finally { setAlterando(false); }
   };
 
   return (
@@ -86,7 +77,7 @@ const PaginaListaFuncionarios = () => {
         ) : erro ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--nhac-texto-claro)' }}>
             <p>{erro}</p>
-            <Botao variante="secundario" onClick={carregar}>Tentar novamente</Botao>
+            <Botao variante="secundario" onClick={() => carregar()}>Tentar novamente</Botao>
           </div>
         ) : (
           <Cartao className={estilos.tabelaCartao}>
@@ -130,11 +121,11 @@ const PaginaListaFuncionarios = () => {
                       <td>{formatarData(func.dataCadastro)}</td>
                       <td>
                         <div className={estilos.acoes}>
-                          <Botao variante="fantasma" icone={<Edit2 size={18} />} onClick={() => navigate(`/funcionarios/${func.id}`)} />
+                          <Botao variante="fantasma" aria-label={`Editar ${func.nomeCompleto}`} icone={<Edit2 size={18} />} onClick={() => navigate(`/funcionarios/${func.id}`)} />
                           {func.ativo ? (
-                            <Botao variante="perigo" icone={<Trash2 size={18} />} onClick={() => setConfirmandoExclusao(func.id)} />
+                            <Botao variante="perigo" aria-label={`Desativar ${func.nomeCompleto}`} disabled={alterando} icone={<Trash2 size={18} />} onClick={() => setConfirmandoExclusao(func.id)} />
                           ) : (
-                            <Botao variante="secundario" icone={<RotateCcw size={18} />} onClick={() => handleReativar(func.id)} />
+                            <Botao variante="secundario" aria-label={`Reativar ${func.nomeCompleto}`} disabled={alterando} icone={<RotateCcw size={18} />} onClick={() => handleReativar(func.id)} />
                           )}
                         </div>
                       </td>
@@ -168,7 +159,7 @@ const PaginaListaFuncionarios = () => {
                     <div className={estilos.acoesMobile}>
                       <Botao variante="secundario" onClick={() => navigate(`/funcionarios/${func.id}`)}>Editar</Botao>
                       {func.ativo ? (
-                        <Botao variante="perigo" onClick={() => setConfirmandoExclusao(func.id)}>Excluir</Botao>
+                        <Botao variante="perigo" onClick={() => setConfirmandoExclusao(func.id)}>Desativar</Botao>
                       ) : (
                         <Botao variante="secundario" onClick={() => handleReativar(func.id)}>Reativar</Botao>
                       )}
@@ -179,6 +170,8 @@ const PaginaListaFuncionarios = () => {
             </div>
           </Cartao>
         )}
+        <Paginacao pagina={pagina} totalPaginas={totalPaginas} total={total} carregando={carregando}
+          aoMudar={page => setParams({ page: String(page) })} />
       </div>
 
       <ModalConfirmacao

@@ -28,6 +28,7 @@ const Seletor = ({
   obrigatorio = false,
   desabilitado = false
 }: PropsSeletor) => {
+  const id = React.useId();
   const [focado, setFocado] = useState(false);
   const temValor = valor !== undefined && valor !== null && valor !== '';
 
@@ -36,12 +37,12 @@ const Seletor = ({
       <div className={`${estilos.seletorWrapper} ${focado ? estilos.focado : ''} ${erro ? estilos.comErro : ''}`}>
         <div className={estilos.campo}>
           {rotulo && (
-            <label className={`${estilos.rotulo} ${(focado || temValor) ? estilos.rotuloFlutuante : ''}`}>
+            <label htmlFor={id} className={`${estilos.rotulo} ${(focado || temValor) ? estilos.rotuloFlutuante : ''}`}>
               {rotulo} {obrigatorio && <span className={estilos.asterisco}>*</span>}
             </label>
           )}
-          
-          <select
+
+          <select id={id} aria-invalid={!!erro} aria-describedby={erro ? `${id}-erro` : undefined}
             value={valor}
             onChange={(e) => aoMudar(e.target.value)}
             onFocus={() => setFocado(true)}
@@ -59,8 +60,8 @@ const Seletor = ({
         </div>
         <ChevronDown className={estilos.iconeSeta} size={20} />
       </div>
-      
-      {erro && <span className={estilos.mensagemErro}>{erro}</span>}
+
+      {erro && <span id={`${id}-erro`} className={estilos.mensagemErro}>{erro}</span>}
     </div>
   );
 };

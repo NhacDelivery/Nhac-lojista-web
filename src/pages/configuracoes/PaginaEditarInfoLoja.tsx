@@ -92,7 +92,7 @@ const PaginaEditarInfoLoja = () => {
 
   return (
     <LayoutPagina titulo="Editar informações">
-      <form onSubmit={handleSalvar} className={estilos.form}>
+      <form noValidate onSubmit={handleSalvar} className={estilos.form}>
         {erro && (
           <div style={{ color: 'var(--nhac-erro, #e53935)', marginBottom: '1rem', fontSize: '0.875rem' }}>
             {erro}
@@ -150,7 +150,7 @@ const PaginaEditarInfoLoja = () => {
 
         <div className={estilos.acoes}>
           <Botao type="button" variante="fantasma" onClick={() => navigate('/configuracoes')}>Cancelar</Botao>
-          <Botao type="submit" variante="primario" carregando={salvando}>Salvar</Botao>
+          <Botao type="submit" variante="primario" carregando={salvando} disabled={enviandoFoto}>Salvar</Botao>
         </div>
       </form>
     </LayoutPagina>

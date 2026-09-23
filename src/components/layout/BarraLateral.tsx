@@ -1,11 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  MessageCircle, 
-  Users, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Package,
+  MessageCircle,
+  Users,
+  BarChart3,
   ClipboardList,
   Settings,
   X,
@@ -40,13 +40,13 @@ interface BarraLateralProps {
   onToggleRecolher?: () => void;
 }
 
-const BarraLateral: React.FC<BarraLateralProps> = ({ 
-  abertaMobile = false, 
+const BarraLateral: React.FC<BarraLateralProps> = ({
+  abertaMobile = false,
   onFechar,
   recolhida = false,
   onToggleRecolher
 }) => {
-  const { usuario, trocarCargo } = useAutenticacao();
+  const { usuario } = useAutenticacao();
 
   if (!usuario) return null;
 
@@ -66,8 +66,8 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
         <div className={estilos.acoesCabecalho}>
           {/* Botão de recolher — visível apenas no desktop */}
           {onToggleRecolher && (
-            <button 
-              className={estilos.botaoRecolher} 
+            <button
+              className={estilos.botaoRecolher}
               onClick={onToggleRecolher}
               title={recolhida ? 'Expandir menu' : 'Recolher menu'}
             >
@@ -76,7 +76,7 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
           )}
           {/* Botão de fechar — visível apenas no mobile quando aberto */}
           {abertaMobile && onFechar && (
-            <button className={estilos.botaoFechar} onClick={onFechar}>
+            <button aria-label="Fechar menu" className={estilos.botaoFechar} onClick={onFechar}>
               <X size={20} />
             </button>
           )}
@@ -87,8 +87,8 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
         {itensFiltrados.map((item) => {
           const Icone = item.icone;
           return (
-            <NavLink 
-              key={item.caminho} 
+            <NavLink
+              key={item.caminho}
               to={item.caminho}
               className={({ isActive }) => `${estilos.link} ${isActive ? estilos.ativo : ''}`}
               onClick={() => onFechar && onFechar()}
@@ -108,15 +108,7 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
           </div>
           <div className={estilos.infoUsuario}>
             <span className={estilos.nome}>{usuario.nomeCompleto}</span>
-            <select 
-              className={estilos.seletorCargo}
-              value={usuario.cargo}
-              onChange={(e) => trocarCargo(e.target.value as Cargo)}
-            >
-              <option value="administrador">Administrador</option>
-              <option value="gerente">Gerente</option>
-              <option value="atendente">Atendente</option>
-            </select>
+            <span className={estilos.seletorCargo}>{usuario.cargo}</span>
           </div>
         </div>
       </div>

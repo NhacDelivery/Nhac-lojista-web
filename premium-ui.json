@@ -1,0 +1,15 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["src"],
+  "locale": "pt-BR",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "Toast", "CRUD"],
+  "ownership": {"Select/Listbox": "native"},
+  "requiredCommands": ["lint", "unit", "build"],
+  "commands": {
+    "lint": "npm run lint",
+    "unit": "CI=true npm test -- --watchAll=false --runInBand",
+    "build": "npm run build"
+  },
+  "evidence": {"crudFullFlow": "e2e/lojista-pedido.spec.ts", "failurePaths": "src/services/chatSocket.test.ts"}
+}
