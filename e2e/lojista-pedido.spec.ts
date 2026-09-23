@@ -31,4 +31,7 @@ test('lojista recebe pedido pago e inicia o preparo', async ({ page }) => {
     'Aguardando um entregador aceitar e coletar',
   );
   await expect(page.getByTestId('e2e.order.advance')).toHaveCount(0);
+
+  await page.getByTestId('e2e.order.redispatch').click();
+  await expect(page.getByRole('alert')).toContainText('Nenhum entregador disponível neste momento.');
 });
