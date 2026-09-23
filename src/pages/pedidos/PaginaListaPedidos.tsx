@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Cartao from '../../components/ui/Cartao';
@@ -8,6 +8,7 @@ import { formatarMoeda, formatarHora, STATUS_PEDIDO_INFO } from '../../utils/for
 import { RefreshCw, ChevronRight } from 'lucide-react';
 import { listarPedidosPagina } from '../../services/api';
 import { usePagina } from '../../hooks/usePagina';
+import { useToast } from '../../contexts/ToastContext';
 import Paginacao from '../../components/ui/Paginacao';
 import estilos from './PaginaListaPedidos.module.css';
 
@@ -28,6 +29,30 @@ const FILTROS: FiltroTag[] = [
 
 const PaginaListaPedidos = () => {
   const navigate = useNavigate();
+  const { mostrarToast } = useToast();
+  useEffect(() => {
+    let ativo = true;
+    let buscando = false;
+    let conhecidos: Set<string> | null = null;
+    const verificarNovos = async () => {
+      if (buscando || document.visibilityState !== 'visible') return;
+      buscando = true;
+      try {
+        const recente = await listarPedidosPagina(0);
+        if (!ativo) return;
+        const ids = new Set(recente.content.map(p => p.id));
+        if (conhecidos) {
+          const novos = recente.content.filter(p => !conhecidos!.has(p.id));
+          if (novos.length) mostrarToast(novos.length === 1 ? 'Novo pedido recebido.' : `${novos.length} novos pedidos recebidos.`);
+        }
+        conhecidos = ids;
+      } catch { /* A listagem mantém seu próprio erro e botão de retry. */ }
+      finally { buscando = false; }
+    };
+    void verificarNovos();
+    const timer = window.setInterval(() => void verificarNovos(), 10000);
+    return () => { ativo = false; window.clearInterval(timer); };
+  }, [mostrarToast]);
   const [params, setParams] = useSearchParams();
   const filtro = params.get('status') || 'todos';
   const pagina = Math.max(0, Number(params.get('page')) || 0);

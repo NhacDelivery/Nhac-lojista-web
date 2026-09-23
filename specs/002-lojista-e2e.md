@@ -1,6 +1,6 @@
 # Spec 002 — E2E do painel do lojista
 
-Status: EM IMPLEMENTAÇÃO
+Status: SLICE 2 IMPLEMENTADO
 Escopo: `Nhac-lojista-web`
 Dependência: `backend-nhac` com profile `e2e`
 Continuação: Spec 003 do `Nhac-Motoboy`
@@ -54,7 +54,7 @@ botão para marcar saída/entrega e informa que aguarda o entregador.
 
 ## Próximos slices
 
-1. notificação e atualização automática de pedido novo;
-2. reenvio manual do despacho sem entregador disponível;
-3. acompanhamento do aceite e coleta pelo motoboy;
+1. ~~notificação e atualização automática de pedido novo~~ (polling da fila);
+2. ~~reenvio manual do despacho sem entregador disponível~~;
+3. ~~acompanhamento em tempo real do aceite, coleta e entrega via WebSocket~~ (falta o E2E multiapp);
 4. E2E multiaplicação cliente -> lojista -> motoboy -> cliente.

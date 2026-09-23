@@ -8,6 +8,7 @@ on:
       - 'src/**'
       - 'src/pages/pedidos/**'
       - 'src/services/api.ts'
+      - 'src/services/pedidoStatusSocket.ts'
       - 'src/validators/statusPedido.ts'
       - 'playwright.config.ts'
       - 'package.json'

@@ -47,4 +47,4 @@ Não classificar como “100% funcional em produção” antes do E2E com backen
 - Backend: `mvn -DskipTests package` com Java 25 aprovado.
 - 49 testes selecionados do backend interrompidos na inicialização do Mockito/Byte Buddy: mecanismo de agent attachment indisponível neste ambiente. Não são testes aprovados e não demonstram falha de regra de negócio.
 - Cinco testes Playwright de interface não chegaram a executar cenários: Chromium encerrou ao abrir socket local com `Operation not permitted`. Nenhuma aprovação visual ou E2E é reivindicada.
-- Envio ao GitHub bloqueado pela revisão automática, que exigiu autorização explícita para compartilhar código/configuração no repositório público `NhacDelivery/Nhac-lojista-web`. PR ainda não criado.
+- Envio autorizado explicitamente pelo usuário; PR de rascunho #4 criado. Atualização da main (slice 2) integrada preservando status via WebSocket e aviso de novos pedidos.
