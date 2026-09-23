@@ -86,8 +86,11 @@ const PaginaFormularioProduto = () => {
         categoria: validarCategoria,
       }
     );
+    const erroEstoque = validarEstoque(estoque);
+    if (erroEstoque) novosErros.estoque = erroEstoque;
+    if (percentualDesconto && (!Number.isInteger(Number(percentualDesconto)) || Number(percentualDesconto) < 0 || Number(percentualDesconto) > 100)) novosErros.percentualDesconto = 'Informe um desconto inteiro entre 0 e 100.';
     setErros(novosErros);
-    setErrosTocados({ nome: true, descricao: true, preco: true, categoria: true });
+    setErrosTocados({ nome: true, descricao: true, preco: true, categoria: true, estoque: true, percentualDesconto: true });
     return Object.keys(novosErros).length === 0;
   };
 
@@ -161,7 +164,7 @@ const PaginaFormularioProduto = () => {
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
-    if (!validarTudo()) return;
+    if (salvando || enviandoImagem || !validarTudo()) return;
 
     setSalvando(true);
     try {
@@ -173,7 +176,7 @@ const PaginaFormularioProduto = () => {
         categoriaMenu: limparTexto(categoria),
         imagemUrl: fotoUrl || undefined,
         ativo,
-        adicionais: adicionais.length > 0 ? adicionais : undefined,
+        adicionais,
         // Campos sem input nesta tela: reenviados como vieram do backend para
         // o PUT não zerá-los (o DTO aceita `peso` string e estoque absoluto).
         peso: peso || undefined,
@@ -211,7 +214,7 @@ const PaginaFormularioProduto = () => {
 
   return (
     <LayoutPagina titulo={ehEdicao ? 'Editar Produto' : 'Novo Produto'}>
-      <form onSubmit={handleSalvar} className={estilos.form}>
+      <form noValidate onSubmit={handleSalvar} className={estilos.form}>
         {carregando && <p className={estilos.status}>Carregando produto...</p>}
         {erro && <p className={estilos.erro} role="alert">{erro}</p>}
         <div className={estilos.container}>
@@ -236,7 +239,7 @@ const PaginaFormularioProduto = () => {
                 obrigatorio
               />
               <InputTexto rotulo="Descrição" valor={descricao} aoMudar={setDescricao} erro={erroCampo('descricao')} />
-              
+
               <div className={estilos.uploadWrapper}>
                 <span className={estilos.rotulo}>Foto do Produto</span>
                 <div
@@ -297,7 +300,7 @@ const PaginaFormularioProduto = () => {
                 Novo Grupo
               </Botao>
             </div>
-            
+
             {adicionais.length === 0 ? (
               <p className={estilos.vazio}>Nenhum grupo de adicional configurado.</p>
             ) : (

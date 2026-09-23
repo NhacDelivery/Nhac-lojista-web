@@ -17,7 +17,7 @@ interface PropsRotaExigeLoja {
  * para o onboarding entre o login e a resposta do backend.
  */
 const RotaExigeLoja: React.FC<PropsRotaExigeLoja> = ({ children }) => {
-  const { carregando, semLoja, loja, erro } = useLoja();
+  const { carregando, semLoja, loja, erro, recarregar } = useLoja();
 
   if (carregando) {
     return (
@@ -38,6 +38,7 @@ const RotaExigeLoja: React.FC<PropsRotaExigeLoja> = ({ children }) => {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--nhac-texto-claro)' }}>
         {erro ?? 'Carregando sua loja...'}
+        {erro && <button type="button" onClick={() => recarregar()}>Tentar novamente</button>}
       </div>
     );
   }

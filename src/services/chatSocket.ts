@@ -1,94 +1,77 @@
-/**
- * Cliente WebSocket (STOMP) do chat — Round 20.
- * Backend: /ws (SockJS) em WebSocketConfig, autenticação dentro do frame
- * STOMP CONNECT (não no handshake HTTP — WebSocket nativo do browser não
- * permite headers customizados no handshake, mas o protocolo STOMP permite
- * no CONNECT). Ver StompAuthChannelInterceptor no backend.
- *
- * Uso:
- *   const socket = conectarChatSocket();
- *   socket.aoConectar(() => socket.assinarConversa(id, (msg) => ...));
- *   socket.enviarMensagem(conversaId, "oi");
- *   socket.desconectar(); // ao desmontar o componente
- */
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { MensagemDTO } from './api';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1';
+const WS_BASE_URL = process.env.REACT_APP_WS_URL || API_URL.replace(/\/api\/v1\/?$/, '/ws');
 
 export interface ChatSocket {
   aoConectar: (callback: () => void) => void;
   aoDesconectar: (callback: () => void) => void;
   aoErro: (callback: (mensagem: string) => void) => void;
-  assinarConversa: (conversaId: string, onMensagem: (mensagem: MensagemDTO) => void) => () => void;
-  enviarMensagem: (conversaId: string, conteudo: string) => void;
+  assinarConversa: (id: string, callback: (mensagem: MensagemDTO) => void) => () => void;
+  enviarMensagem: (id: string, conteudo: string) => boolean;
   desconectar: () => void;
 }
 
-/**
- * Abre a conexão STOMP. O token é lido de localStorage no momento da conexão
- * e a cada reconexão automática (o mesmo `@nhac:token` usado pelo REST) —
- * assim, se o usuário logar de novo com um token diferente, a próxima
- * reconexão automática já usa o token atualizado.
- */
 export function conectarChatSocket(): ChatSocket {
-  const assinaturasPorConversa = new Map<string, StompSubscription>();
-
+  const desejadas = new Map<string, (mensagem: MensagemDTO) => void>();
+  const ativas = new Map<string, StompSubscription>();
+  let encerrado = false;
+  let conectado = () => {};
+  let desconectado = () => {};
+  let erro: (mensagem: string) => void = () => {};
   const client = new Client({
     webSocketFactory: () => new SockJS(WS_BASE_URL) as unknown as WebSocket,
-    reconnectDelay: 4000,
-    heartbeatIncoming: 10000,
-    heartbeatOutgoing: 10000,
+    reconnectDelay: 4000, heartbeatIncoming: 10000, heartbeatOutgoing: 10000,
   });
-
-  // @stomp/stompjs aceita connectHeaders como objeto fixo — resolvendo o
-  // token na hora da conexão (não um objeto congelado no momento do new Client).
-  client.beforeConnect = () => {
-    client.connectHeaders = {
-      Authorization: `Bearer ${localStorage.getItem('@nhac:token') ?? ''}`,
-    };
+  const assinar = (id: string) => {
+    if (!client.connected || encerrado || ativas.has(id)) return;
+    ativas.set(id, client.subscribe(`/topic/conversas/${id}`, (frame: IMessage) => {
+      if (encerrado) return;
+      try { desejadas.get(id)?.(JSON.parse(frame.body)); }
+      catch { erro('Mensagem inválida recebida. Atualize o histórico.'); }
+    }));
   };
-
+  client.beforeConnect = () => {
+    client.connectHeaders = { Authorization: `Bearer ${localStorage.getItem('@nhac:token') ?? ''}` };
+  };
+  client.onConnect = () => {
+    if (encerrado) return;
+    ativas.clear();
+    desejadas.forEach((_, id) => assinar(id));
+    conectado();
+  };
+  client.onWebSocketClose = () => { ativas.clear(); if (!encerrado) desconectado(); };
+  client.onStompError = () => { if (!encerrado) erro('Não foi possível concluir a operação no chat.'); };
+  client.onWebSocketError = () => { if (!encerrado) erro('Chat desconectado. Tentando reconectar...'); };
   client.activate();
-
   return {
-    aoConectar(callback) {
-      client.onConnect = callback;
-    },
-    aoDesconectar(callback) {
-      client.onDisconnect = callback;
-    },
-    aoErro(callback) {
-      client.onStompError = (frame) => callback(frame.headers?.message ?? 'Erro na conexão do chat.');
-      client.onWebSocketError = () => callback('Não foi possível conectar ao chat em tempo real.');
-    },
-    assinarConversa(conversaId, onMensagem) {
-      const assinatura = client.subscribe(`/topic/conversas/${conversaId}`, (frame: IMessage) => {
-        try {
-          const mensagem: MensagemDTO = JSON.parse(frame.body);
-          onMensagem(mensagem);
-        } catch {
-          // corpo inesperado — ignora silenciosamente, o histórico REST cobre o gap
-        }
-      });
-      assinaturasPorConversa.set(conversaId, assinatura);
-
+    aoConectar(callback) { conectado = callback; if (client.connected) callback(); },
+    aoDesconectar(callback) { desconectado = callback; },
+    aoErro(callback) { erro = callback; },
+    assinarConversa(id, callback) {
+      desejadas.set(id, callback);
+      assinar(id);
       return () => {
-        assinatura.unsubscribe();
-        assinaturasPorConversa.delete(conversaId);
+        if (desejadas.get(id) !== callback) return;
+        desejadas.delete(id);
+        if (client.connected) ativas.get(id)?.unsubscribe();
+        ativas.delete(id);
       };
     },
-    enviarMensagem(conversaId, conteudo) {
-      client.publish({
-        destination: `/app/conversas/${conversaId}/enviar`,
-        body: JSON.stringify({ conteudo }),
-      });
+    enviarMensagem(id, conteudo) {
+      if (encerrado || !client.connected || !conteudo.trim() || conteudo.length > 4000) return false;
+      try {
+        client.publish({ destination: `/app/conversas/${id}/enviar`, body: JSON.stringify({ conteudo }) });
+        return true;
+      } catch { erro('Mensagem não enviada. Tente novamente.'); return false; }
     },
     desconectar() {
-      assinaturasPorConversa.forEach((assinatura) => assinatura.unsubscribe());
-      assinaturasPorConversa.clear();
-      client.deactivate();
+      encerrado = true;
+      desejadas.clear();
+      ativas.clear();
+      void client.deactivate();
     },
   };
 }

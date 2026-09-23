@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 
 interface ToastContextType {
   mostrarToast: (mensagem: string) => void;
@@ -9,9 +9,13 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ProvedorToast: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [mensagem, setMensagem] = useState<string | null>(null);
 
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
   const mostrarToast = useCallback((texto: string) => {
     setMensagem(texto);
-    window.setTimeout(() => setMensagem(null), 4000);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setMensagem(null), 4000);
   }, []);
 
   return (

@@ -5,7 +5,7 @@
 
 import { ApiError, ErroBackend } from '../utils/errosApi';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 
 function limparSessao(): void {
   localStorage.removeItem('@nhac:token');
@@ -65,7 +65,7 @@ async function requisicao<T>(
       corpoErro = {
         requestId: json.requestId,
         status: json.status ?? resposta.status,
-        erro: json.erro ?? json.error ?? 'ErroDesconhecido',
+        erro: json.errorCode ?? json.erro ?? json.error ?? 'ErroDesconhecido',
         mensagem: json.mensagem ?? json.message ?? corpoErro.mensagem,
         timestamp: json.timestamp,
         path: json.path,
@@ -905,11 +905,12 @@ export async function buscarFinanceiro(periodo: PeriodoFinanceiro): Promise<Fina
 // WebSocket — ver services/chatSocket.ts. Isso aqui é só o histórico e a
 // listagem de conversas.
 
-export type RemetenteTipo = 'CLIENTE' | 'LOJA';
+export type RemetenteTipo = 'CLIENTE' | 'LOJA' | 'ENTREGADOR';
 
 export interface ConversaResumoDTO {
   id: string;
   clienteId: string;
+  participanteTipo?: 'CLIENTE' | 'ENTREGADOR';
   clienteNome: string;
   ultimaMensagemPreview: string | null;
   ultimaMensagemEm: string;
@@ -976,3 +977,32 @@ export async function buscarCep(cep: string): Promise<{
 }
 
 export { requisicao };
+
+// Page metadata must survive the HTTP layer: callers can reach every record.
+export function listarProdutosPagina(page = 0, nome = '', categoriaMenu = ''): Promise<PaginaSpring<ProdutoLojistaDTO>> {
+  const params = new URLSearchParams({ page: String(page), size: '20', nome, categoriaMenu });
+  return requisicao(`/lojista/produtos?${params}`);
+}
+export function listarPedidosPagina(page = 0, status = ''): Promise<PaginaSpring<PedidoResumoLojistaDTO>> {
+  const params = new URLSearchParams({ page: String(page), size: '20' });
+  if (status) params.set('status', status);
+  return requisicao(`/lojista/pedidos?${params}`);
+}
+export function listarFuncionariosPagina(page = 0): Promise<PaginaSpring<FuncionarioResponseDTO>> {
+  return requisicao(`/lojista/funcionarios?size=20&page=${page}`);
+}
+export async function buscarFuncionario(id: string): Promise<FuncionarioResponseDTO> {
+  // The server has no individual GET. Traverse pages without truncating at 100.
+  for (let page = 0; ; page++) {
+    const resultado = await listarFuncionariosPagina(page);
+    const funcionario = resultado.content.find(item => item.id === id);
+    if (funcionario) return funcionario;
+    if (page + 1 >= resultado.totalPages) throw new Error('Funcionário não encontrado.');
+  }
+}
+export function listarConversasPagina(page = 0): Promise<PaginaSpring<ConversaResumoDTO>> {
+  return requisicao(`/lojista/conversas?size=20&page=${page}`);
+}
+export function listarMensagensPagina(id: string, page = 0): Promise<PaginaSpring<MensagemDTO>> {
+  return requisicao(`/lojista/conversas/${id}/mensagens?size=30&page=${page}`);
+}

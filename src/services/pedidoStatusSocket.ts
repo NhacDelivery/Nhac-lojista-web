@@ -2,7 +2,7 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { StatusPedido } from '../types';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+const WS_BASE_URL = process.env.REACT_APP_WS_URL || (process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1').replace(/\/api\/v1\/?$/, '/ws');
 const STATUS_VALIDOS = new Set<StatusPedido>([
   'PENDENTE',
   'PAGO',
@@ -24,6 +24,7 @@ export function conectarStatusPedidoSocket(
   pedidoId: string,
   aoAtualizar: (status: StatusPedido) => void,
 ): PedidoStatusSocket {
+  let encerrado = false;
   let assinatura: StompSubscription | undefined;
 
   const client = new Client({
@@ -40,10 +41,10 @@ export function conectarStatusPedidoSocket(
   };
 
   client.onConnect = () => {
-    assinatura?.unsubscribe();
+    if (encerrado) return;
     assinatura = client.subscribe(`/topic/pedidos/${pedidoId}/status`, (frame: IMessage) => {
       const status = frame.body.trim().replace(/^"|"$/g, '') as StatusPedido;
-      if (STATUS_VALIDOS.has(status)) aoAtualizar(status);
+      if (!encerrado && STATUS_VALIDOS.has(status)) aoAtualizar(status);
     });
   };
 
@@ -51,7 +52,8 @@ export function conectarStatusPedidoSocket(
 
   return {
     desconectar() {
-      assinatura?.unsubscribe();
+      encerrado = true;
+      if (client.connected) assinatura?.unsubscribe();
       assinatura = undefined;
       void client.deactivate();
     },

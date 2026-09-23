@@ -3,15 +3,14 @@ import LayoutPagina from '../../components/layout/LayoutPagina';
 import Avatar from '../../components/ui/Avatar';
 import Botao from '../../components/ui/Botao';
 import {
-  listarConversas,
-  listarMensagens,
+  listarConversasPagina,
+  listarMensagensPagina,
   marcarConversaComoLida,
   ConversaResumoDTO,
   MensagemDTO,
 } from '../../services/api';
 import { conectarChatSocket, ChatSocket } from '../../services/chatSocket';
 import { tratarErroApi } from '../../utils/errosApi';
-import { useToast } from '../../contexts/ToastContext';
 import { formatarData, formatarHora } from '../../utils/formatacao';
 import { Send, ArrowLeft, MessageSquare } from 'lucide-react';
 import estilos from './PaginaChat.module.css';
@@ -25,7 +24,6 @@ const MENSAGENS_PRE_PRONTAS = [
 ];
 
 const PaginaChat = () => {
-  const { mostrarToast } = useToast();
   const [conversas, setConversas] = useState<ConversaResumoDTO[]>([]);
   const [conversaAtivaId, setConversaAtivaId] = useState<string | null>(null);
   const [mensagens, setMensagens] = useState<MensagemDTO[]>([]);
@@ -33,72 +31,91 @@ const PaginaChat = () => {
   const [carregandoConversas, setCarregandoConversas] = useState(true);
   const [carregandoMensagens, setCarregandoMensagens] = useState(false);
 
+  const [conectado, setConectado] = useState(false);
+  const [erroChat, setErroChat] = useState('');
+  const [paginaConversas, setPaginaConversas] = useState(0);
+  const [maisConversas, setMaisConversas] = useState(false);
+  const [paginaMensagens, setPaginaMensagens] = useState(0);
+  const [maisMensagens, setMaisMensagens] = useState(false);
+  const ativaRef = useRef<string | null>(null);
+  const versaoRef = useRef(0);
   const socketRef = useRef<ChatSocket | null>(null);
   const desinscreverRef = useRef<(() => void) | null>(null);
 
   const conversaAtiva = conversas.find((c) => c.id === conversaAtivaId) ?? null;
 
-  const carregarConversas = useCallback(async () => {
+  const carregarConversas = useCallback(async (pagina = 0) => {
     try {
       setCarregandoConversas(true);
-      const dados = await listarConversas();
-      setConversas(dados);
+      const dados = await listarConversasPagina(pagina);
+      setConversas(atual => pagina === 0 ? dados.content : [...atual, ...dados.content.filter(c => !atual.some(a => a.id === c.id))]);
+      setPaginaConversas(pagina);
+      setMaisConversas(pagina + 1 < dados.totalPages);
+      setErroChat('');
     } catch (err) {
       const tratado = tratarErroApi(err);
-      mostrarToast(tratado.mensagemGeral ?? 'Não foi possível carregar as conversas.');
+      setErroChat(tratado.mensagemGeral ?? 'Não foi possível carregar as conversas.');
     } finally {
       setCarregandoConversas(false);
     }
-  }, [mostrarToast]);
+  }, []);
 
   useEffect(() => {
     const socket = conectarChatSocket();
-    socket.aoErro((mensagem) => mostrarToast(mensagem));
+    socket.aoErro(setErroChat);
+    socket.aoConectar(() => { setConectado(true); setErroChat(''); if (ativaRef.current) void carregarHistorico(ativaRef.current, 0); });
+    socket.aoDesconectar(() => setConectado(false));
     socketRef.current = socket;
 
     carregarConversas();
 
+    const versao = versaoRef;
     return () => {
+      ativaRef.current = null;
+      versao.current++;
       desinscreverRef.current?.();
       socket.desconectar();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSelecionarConversa = async (id: string) => {
-    desinscreverRef.current?.();
-    setConversaAtivaId(id);
-    setMensagens([]);
+  const combinar = (atual: MensagemDTO[], novas: MensagemDTO[]) =>
+    Array.from(new Map([...atual, ...novas].map(m => [m.id, m])).values())
+      .sort((a, b) => a.enviadaEm.localeCompare(b.enviadaEm));
 
+  async function carregarHistorico(id: string, pagina: number) {
+    const versao = ++versaoRef.current;
+    setCarregandoMensagens(true);
     try {
-      setCarregandoMensagens(true);
-      const historico = await listarMensagens(id);
-      // backend devolve mais recente primeiro — inverte pra renderizar antiga -> nova
-      setMensagens([...historico].reverse());
+      const historico = await listarMensagensPagina(id, pagina);
+      if (ativaRef.current !== id || versao !== versaoRef.current) return;
+      setMensagens(atual => combinar(atual, historico.content));
+      setPaginaMensagens(pagina);
+      setMaisMensagens(pagina + 1 < historico.totalPages);
+      setErroChat('');
+      await marcarConversaComoLida(id);
+      if (ativaRef.current === id) setConversas(atual => atual.map(c => c.id === id ? { ...c, naoLidas: 0 } : c));
     } catch (err) {
-      const tratado = tratarErroApi(err);
-      mostrarToast(tratado.mensagemGeral ?? 'Não foi possível carregar o histórico.');
+      if (ativaRef.current === id && versao === versaoRef.current) setErroChat(tratarErroApi(err).mensagemGeral ?? 'Não foi possível carregar o histórico.');
     } finally {
-      setCarregandoMensagens(false);
+      if (ativaRef.current === id && versao === versaoRef.current) setCarregandoMensagens(false);
     }
+  }
 
-    marcarConversaComoLida(id).catch(() => {
-      /* melhor esforço — não bloqueia a experiência se falhar */
-    });
-    setConversas((atual) => atual.map((c) => (c.id === id ? { ...c, naoLidas: 0 } : c)));
-
-    if (socketRef.current) {
-      desinscreverRef.current = socketRef.current.assinarConversa(id, (mensagem) => {
-        setMensagens((atual) => [...atual, mensagem]);
-        setConversas((atual) =>
-          atual.map((c) =>
-            c.id === mensagem.conversaId
-              ? { ...c, ultimaMensagemPreview: mensagem.conteudo, ultimaMensagemEm: mensagem.enviadaEm }
-              : c
-          )
-        );
-      });
-    }
+  const handleSelecionarConversa = (id: string) => {
+    desinscreverRef.current?.();
+    ativaRef.current = id;
+    setConversaAtivaId(id);
+    setNovaMensagem('');
+    setMensagens([]);
+    setMaisMensagens(false);
+    desinscreverRef.current = socketRef.current?.assinarConversa(id, mensagem => {
+      if (ativaRef.current !== id) return;
+      setMensagens(atual => combinar(atual, [mensagem]));
+      setConversas(atual => atual.map(c => c.id === id ? { ...c, ultimaMensagemPreview: mensagem.conteudo, ultimaMensagemEm: mensagem.enviadaEm } : c));
+      void marcarConversaComoLida(id).catch(() => {});
+    }) ?? null;
+    void carregarHistorico(id, 0);
   };
 
   const handleEnviar = (e?: React.FormEvent) => {
@@ -109,8 +126,8 @@ const PaginaChat = () => {
     // volta pro remetente também (a assinatura em /topic/conversas/{id} já
     // está ativa pra essa conversa), então ela chega pelo mesmo caminho que
     // a mensagem do cliente chegaria.
-    socketRef.current.enviarMensagem(conversaAtiva.id, novaMensagem.trim());
-    setNovaMensagem('');
+    if (socketRef.current.enviarMensagem(conversaAtiva.id, novaMensagem.trim())) setNovaMensagem('');
+    else setErroChat('Mensagem não enviada. Aguarde a reconexão e tente novamente.');
   };
 
   const usarMensagemRapida = (texto: string) => {
@@ -119,6 +136,8 @@ const PaginaChat = () => {
 
   return (
     <LayoutPagina titulo="Chat">
+      <p role="status">{conectado ? 'Chat conectado' : 'Reconectando ao chat…'}</p>
+      {erroChat && <div role="alert">{erroChat} <button onClick={() => conversaAtivaId ? carregarHistorico(conversaAtivaId, 0) : carregarConversas()}>Tentar novamente</button></div>}
       <div className={estilos.container}>
         <div className={`${estilos.listaConversas} ${conversaAtivaId ? estilos.esconderMobile : ''}`}>
           {carregandoConversas ? (
@@ -127,7 +146,7 @@ const PaginaChat = () => {
             <p style={{ padding: '1rem', color: 'var(--nhac-texto-claro)' }}>Nenhuma conversa ainda.</p>
           ) : (
             conversas.map((conversa) => (
-              <div
+              <button type="button"
                 key={conversa.id}
                 className={`${estilos.itemConversa} ${conversaAtivaId === conversa.id ? estilos.ativo : ''}`}
                 onClick={() => handleSelecionarConversa(conversa.id)}
@@ -135,7 +154,7 @@ const PaginaChat = () => {
                 <Avatar nome={conversa.clienteNome} tamanho="medio" />
                 <div className={estilos.infoConversa}>
                   <div className={estilos.linhaTopo}>
-                    <span className={estilos.nomeCliente}>{conversa.clienteNome}</span>
+                    <span className={estilos.nomeCliente}>{conversa.clienteNome} {conversa.participanteTipo === 'ENTREGADOR' ? '· Entregador' : ''}</span>
                     <span className={estilos.tempo}>{formatarData(conversa.ultimaMensagemEm).split(' ')[0]}</span>
                   </div>
                   <div className={estilos.linhaBase}>
@@ -143,16 +162,18 @@ const PaginaChat = () => {
                   </div>
                 </div>
                 {conversa.naoLidas > 0 && <div className={estilos.badge}>{conversa.naoLidas}</div>}
-              </div>
+              </button>
             ))
           )}
+          {maisConversas && <Botao onClick={() => carregarConversas(paginaConversas + 1)} carregando={carregandoConversas}>Mais conversas</Botao>}
+          <Botao variante="fantasma" onClick={() => carregarConversas()} disabled={carregandoConversas}>Atualizar conversas</Botao>
         </div>
 
         <div className={`${estilos.areaChat} ${!conversaAtivaId ? estilos.esconderMobile : ''}`}>
           {conversaAtiva ? (
             <>
               <header className={estilos.cabecalhoChat}>
-                <button className={estilos.voltarMobile} onClick={() => setConversaAtivaId(null)}>
+                <button className={estilos.voltarMobile} aria-label="Voltar para conversas" onClick={() => { ativaRef.current = null; versaoRef.current++; desinscreverRef.current?.(); setConversaAtivaId(null); }}>
                   <ArrowLeft size={24} />
                 </button>
                 <Avatar nome={conversaAtiva.clienteNome} tamanho="pequeno" />
@@ -163,6 +184,7 @@ const PaginaChat = () => {
 
               <div className={estilos.mensagensContainer}>
                 <div className={estilos.mensagens}>
+                  {maisMensagens && <Botao variante="secundario" carregando={carregandoMensagens} onClick={() => carregarHistorico(conversaAtiva.id, paginaMensagens + 1)}>Mensagens anteriores</Botao>}
                   {carregandoMensagens ? (
                     <p style={{ color: 'var(--nhac-texto-claro)', textAlign: 'center' }}>Carregando mensagens...</p>
                   ) : (
@@ -187,15 +209,17 @@ const PaginaChat = () => {
                     </button>
                   ))}
                 </div>
-                <form className={estilos.formEnvio} onSubmit={handleEnviar}>
+                <form noValidate className={estilos.formEnvio} onSubmit={handleEnviar}>
                   <input
                     type="text"
+                    aria-label="Mensagem"
+                    maxLength={4000}
                     className={estilos.inputMensagem}
                     value={novaMensagem}
                     onChange={(e) => setNovaMensagem(e.target.value)}
                     placeholder="Digite sua mensagem..."
                   />
-                  <Botao type="submit" icone={<Send size={20} />} disabled={!novaMensagem.trim()} />
+                  <Botao type="submit" icone={<Send size={20} />} aria-label="Enviar mensagem" disabled={!novaMensagem.trim() || !conectado} />
                 </form>
               </div>
             </>

@@ -25,6 +25,7 @@ import PaginaEditarInfoLoja from './pages/configuracoes/PaginaEditarInfoLoja';
 import PaginaConfiguracoesConta from './pages/configuracoes/PaginaConfiguracoesConta';
 import PaginaEnderecoLoja from './pages/configuracoes/PaginaEnderecoLoja';
 import PaginaFormasPagamento from './pages/configuracoes/PaginaFormasPagamento';
+import PaginaOperacaoLoja from './pages/configuracoes/PaginaOperacaoLoja';
 import PaginaRecuperarSenha from './pages/autenticacao/PaginaRecuperarSenha';
 
 function RotaProtegidaComLoja({
@@ -118,6 +119,11 @@ function App() {
                 }
               />
 
+              <Route path="/funcionarios/:id" element={
+                <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <PaginaFormularioFuncionario />
+                </RotaProtegidaComLoja>
+              } />
               <Route
                 path="/chat"
                 element={
@@ -185,6 +191,9 @@ function App() {
                 }
               />
 
+              <Route path="/configuracoes/operacao" element={
+                <RotaProtegidaComLoja cargosPermitidos={['administrador']}><PaginaOperacaoLoja /></RotaProtegidaComLoja>
+              } />
               <Route
                 path="/financeiro"
                 element={

@@ -17,6 +17,7 @@ interface ItemAtalho {
 
 const ITENS_LOJA: ItemAtalho[] = [
   { icone: Store, rotulo: 'Nome, categoria e descrição', caminho: '/configuracoes/editar' },
+  { icone: Store, rotulo: 'Horários e entrega', caminho: '/configuracoes/operacao' },
   { icone: CreditCard, rotulo: 'Formas de pagamento', caminho: '/configuracoes/pagamentos' },
   { icone: MapPin, rotulo: 'Endereço da loja', caminho: '/configuracoes/endereco' },
   { icone: Settings, rotulo: 'Configurações da conta', caminho: '/configuracoes/conta' },

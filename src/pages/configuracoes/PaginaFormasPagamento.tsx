@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
-import Checkbox from '../../components/ui/Checkbox';
 import Botao from '../../components/ui/Botao';
 import { Banknote, CreditCard, Smartphone, Utensils, ShoppingBag } from 'lucide-react';
 import { useLoja } from '../../contexts/LojaContext';
@@ -97,7 +96,7 @@ const PaginaFormasPagamento = () => {
 
         <div className={estilos.gridPagamentos}>
           {opcoes.map(({ chave, icone: Icone, rotulo }) => (
-            <div
+            <button type="button" aria-pressed={pagamentos[chave]} disabled={salvando}
               key={chave}
               className={`${estilos.cartaoPagamento} ${pagamentos[chave] ? estilos.selecionado : ''}`}
               onClick={() => toggle(chave)}
@@ -105,9 +104,9 @@ const PaginaFormasPagamento = () => {
               <Icone size={24} className={estilos.iconePagamento} />
               <span className={estilos.rotuloPagamento}>{rotulo}</span>
               <div style={{ marginLeft: 'auto' }}>
-                <Checkbox marcado={pagamentos[chave]} aoMudar={() => {}} rotulo="" />
+                <span aria-hidden="true">{pagamentos[chave] ? "✓" : "+"}</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
