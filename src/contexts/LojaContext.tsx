@@ -23,7 +23,9 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [erro, setErro] = useState<string | null>(null);
 
   const recarregar = useCallback(async () => {
-    if (!usuario) {
+    // A sessão pode ter sido criada nesta mesma ação de cadastro, antes do
+    // próximo render do contexto. O cliente HTTP usa este mesmo token.
+    if (!localStorage.getItem('@nhac:token')) {
       setLoja(null);
       setSemLoja(false);
       setErro(null);
@@ -64,11 +66,11 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setCarregando(false);
     }
-  }, [usuario, mostrarToast]);
+  }, [mostrarToast]);
 
   useEffect(() => {
     recarregar();
-  }, [recarregar]);
+  }, [usuario, recarregar]);
 
   return (
     <LojaContext.Provider value={{ loja, semLoja, carregando, erro, recarregar }}>

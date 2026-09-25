@@ -1,0 +1,529 @@
+From 502054a862ef5a4ef9c7607b05c2896cba7df1db Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 25 Sep 2026 08:25:53 -0500
+Subject: [PATCH] fix: corrige cadastro, upload e cargos do lojista
+
+---
+ src/App.tsx                               |  5 +-
+ src/components/layout/BarraLateral.tsx    | 14 ++--
+ src/contexts/AutenticacaoContext.tsx      | 74 +++++++++++---------
+ src/contexts/LojaContext.tsx              |  8 ++-
+ src/pages/autenticacao/PaginaCadastro.tsx | 83 +++++++++++++++--------
+ src/pages/autenticacao/PaginaLogin.tsx    |  8 ++-
+ src/services/api.ts                       | 16 +++++
+ src/types/index.ts                        |  5 +-
+ src/utils/cargo.ts                        | 17 +++++
+ 9 files changed, 152 insertions(+), 78 deletions(-)
+ create mode 100644 src/utils/cargo.ts
+
+diff --git a/src/App.tsx b/src/App.tsx
+index ed4a4e8..dba11c8 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -4,6 +4,7 @@ import { ProvedorAutenticacao } from './contexts/AutenticacaoContext';
+ import { ProvedorToast } from './contexts/ToastContext';
+ import { ProvedorLoja } from './contexts/LojaContext';
+ import RotaProtegida from './components/compartilhados/RotaProtegida';
++import { Cargo } from './types';
+ import RotaExigeLoja from './components/compartilhados/RotaExigeLoja';
+ 
+ // Páginas de autenticação
+@@ -32,7 +33,7 @@ function RotaProtegidaComLoja({
+   cargosPermitidos,
+ }: {
+   children: React.ReactNode;
+-  cargosPermitidos?: ('administrador' | 'gerente' | 'atendente')[];
++  cargosPermitidos?: Cargo[];
+ }) {
+   return (
+     <RotaProtegida cargosPermitidos={cargosPermitidos}>
+@@ -57,7 +58,7 @@ function App() {
+               <Route
+                 path="/onboarding-loja"
+                 element={
+-                  <RotaProtegida cargosPermitidos={['administrador', 'gerente']}>
++                  <RotaProtegida cargosPermitidos={['cliente', 'administrador']}>
+                     <PaginaCadastro modo="apenas-loja" />
+                   </RotaProtegida>
+                 }
+diff --git a/src/components/layout/BarraLateral.tsx b/src/components/layout/BarraLateral.tsx
+index f1470a7..493ddb0 100644
+--- a/src/components/layout/BarraLateral.tsx
++++ b/src/components/layout/BarraLateral.tsx
+@@ -46,7 +46,7 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
+   recolhida = false,
+   onToggleRecolher
+ }) => {
+-  const { usuario, trocarCargo } = useAutenticacao();
++  const { usuario } = useAutenticacao();
+ 
+   if (!usuario) return null;
+ 
+@@ -108,15 +108,9 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
+           </div>
+           <div className={estilos.infoUsuario}>
+             <span className={estilos.nome}>{usuario.nomeCompleto}</span>
+-            <select 
+-              className={estilos.seletorCargo}
+-              value={usuario.cargo}
+-              onChange={(e) => trocarCargo(e.target.value as Cargo)}
+-            >
+-              <option value="administrador">Administrador</option>
+-              <option value="gerente">Gerente</option>
+-              <option value="atendente">Atendente</option>
+-            </select>
++            <span className={estilos.seletorCargo}>
++              {usuario.cargo.charAt(0).toUpperCase() + usuario.cargo.slice(1)}
++            </span>
+           </div>
+         </div>
+       </div>
+diff --git a/src/contexts/AutenticacaoContext.tsx b/src/contexts/AutenticacaoContext.tsx
+index 62dc467..ddf8bc5 100644
+--- a/src/contexts/AutenticacaoContext.tsx
++++ b/src/contexts/AutenticacaoContext.tsx
+@@ -1,37 +1,27 @@
+ import React, { createContext, useState, useEffect, ReactNode } from 'react';
+-import { Usuario, Cargo } from '../types';
+-import { login, LoginResponseDTO } from '../services/api';
++import { Usuario } from '../types';
++import { buscarUsuario, login, LoginResponseDTO } from '../services/api';
++import { mapearCargo } from '../utils/cargo';
+ import { normalizarEmail } from '../validators';
+ import { ehApiError, tratarErroApi } from '../utils/errosApi';
+ 
+ interface ContextoAutenticacao {
+   usuario: Usuario | null;
+   carregando: boolean;
+-  entrar: (email: string, senha: string) => Promise<void>;
++  entrar: (email: string, senha: string) => Promise<Usuario>;
+   definirSessao: (token: string, dados: Partial<Usuario> & { id: string; nomeCompleto: string }) => void;
+   sair: () => void;
+-  trocarCargo: (cargo: Cargo) => void;
+ }
+ 
+ export const AutenticacaoContext = createContext<ContextoAutenticacao | undefined>(undefined);
+ 
+-/**
+- * Mapeia o papel do backend (CLIENTE | LOJISTA | ADMIN) para os cargos da UI.
+- * Nota: o cadastro retorna CLIENTE; o usuário é promovido a LOJISTA
+- * no backend quando a loja é criada (POST /lojas).
+- */
+-function mapearCargo(papel?: string): Cargo {
+-  if (papel === 'LOJISTA' || papel === 'ADMIN') return 'administrador';
+-  return 'administrador';
+-}
+-
+ function converterUsuarioApi(usuarioApi: LoginResponseDTO, emailFallback = ''): Usuario {
+   return {
+     id: usuarioApi.usuarioId,
+     nomeCompleto: usuarioApi.nome,
+     email: usuarioApi.email ?? emailFallback,
+     telefone: '',
+-    cargo: mapearCargo(usuarioApi.papel),
++    cargo: mapearCargo(usuarioApi.papel, usuarioApi.cargo),
+     lojaId: '',
+   };
+ }
+@@ -41,23 +31,51 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({ childr
+   const [carregando, setCarregando] = useState(true);
+ 
+   useEffect(() => {
++    let ativo = true;
+     const usuarioSalvo = localStorage.getItem('@nhac:usuario');
+     const tokenSalvo = localStorage.getItem('@nhac:token');
+ 
+-    if (usuarioSalvo && tokenSalvo) {
+-      setUsuario(JSON.parse(usuarioSalvo));
+-    }
+-    setCarregando(false);
++    const restaurar = async () => {
++      try {
++        if (!usuarioSalvo || !tokenSalvo) return;
++        const salvo = JSON.parse(usuarioSalvo) as Usuario;
++        if (!salvo.id) throw new Error('Sessão inválida.');
++        const perfil = await buscarUsuario(salvo.id);
++        if (!ativo || localStorage.getItem('@nhac:token') !== tokenSalvo) return;
++        const atualizado: Usuario = {
++          id: perfil.id,
++          nomeCompleto: perfil.nome,
++          email: perfil.email,
++          telefone: perfil.telefone,
++          fotoUrl: perfil.imagemUrl,
++          cargo: mapearCargo(perfil.papel, perfil.cargo),
++          lojaId: salvo.lojaId ?? '',
++        };
++        setUsuario(atualizado);
++        localStorage.setItem('@nhac:usuario', JSON.stringify(atualizado));
++      } catch {
++        if (ativo && localStorage.getItem('@nhac:token') === tokenSalvo) {
++          localStorage.removeItem('@nhac:usuario');
++          localStorage.removeItem('@nhac:token');
++          setUsuario(null);
++        }
++      } finally {
++        if (ativo) setCarregando(false);
++      }
++    };
++    void restaurar();
++    return () => { ativo = false; };
+   }, []);
+ 
+   const definirSessao = (token: string, dados: Partial<Usuario> & { id: string; nomeCompleto: string }) => {
++    if (!token || !dados.id) throw new Error('Não foi possível iniciar sua sessão. Faça login novamente.');
+     localStorage.setItem('@nhac:token', token);
+     const usuarioFormatado: Usuario = {
+       id: dados.id,
+       nomeCompleto: dados.nomeCompleto,
+       email: dados.email ?? '',
+       telefone: dados.telefone ?? '',
+-      cargo: dados.cargo ?? 'administrador',
++      cargo: dados.cargo ?? 'atendente',
+       lojaId: dados.lojaId ?? '',
+       fotoUrl: dados.fotoUrl,
+     };
+@@ -65,13 +83,15 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({ childr
+     localStorage.setItem('@nhac:usuario', JSON.stringify(usuarioFormatado));
+   };
+ 
+-  const entrar = async (emailBruto: string, senha: string): Promise<void> => {
++  const entrar = async (emailBruto: string, senha: string): Promise<Usuario> => {
+     setCarregando(true);
+     try {
+       // E-mail padronizado: trim + lowercase antes de enviar
+       const email = normalizarEmail(emailBruto);
+       const resposta = await login({ email, senha });
+-      definirSessao(resposta.accessToken, converterUsuarioApi(resposta, email));
++      const autenticado = converterUsuarioApi(resposta, email);
++      definirSessao(resposta.accessToken, autenticado);
++      return autenticado;
+     } catch (erro) {
+       // Repassa o ApiError original para a UI poder distinguir casos como
+       // 429 (rate limit) e 400 (e-mail não verificado) dos 401 genéricos.
+@@ -91,16 +111,8 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({ childr
+     localStorage.removeItem('@nhac:token');
+   };
+ 
+-  const trocarCargo = (cargo: Cargo) => {
+-    if (usuario) {
+-      const novoUsuario = { ...usuario, cargo };
+-      setUsuario(novoUsuario);
+-      localStorage.setItem('@nhac:usuario', JSON.stringify(novoUsuario));
+-    }
+-  };
+-
+   return (
+-    <AutenticacaoContext.Provider value={{ usuario, carregando, entrar, definirSessao, sair, trocarCargo }}>
++    <AutenticacaoContext.Provider value={{ usuario, carregando, entrar, definirSessao, sair }}>
+       {children}
+     </AutenticacaoContext.Provider>
+   );
+diff --git a/src/contexts/LojaContext.tsx b/src/contexts/LojaContext.tsx
+index f5b261d..1daa0e3 100644
+--- a/src/contexts/LojaContext.tsx
++++ b/src/contexts/LojaContext.tsx
+@@ -23,7 +23,9 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
+   const [erro, setErro] = useState<string | null>(null);
+ 
+   const recarregar = useCallback(async () => {
+-    if (!usuario) {
++    // A sessão pode ter sido criada nesta mesma ação de cadastro, antes do
++    // próximo render do contexto. O cliente HTTP usa este mesmo token.
++    if (!localStorage.getItem('@nhac:token')) {
+       setLoja(null);
+       setSemLoja(false);
+       setErro(null);
+@@ -64,11 +66,11 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
+     } finally {
+       setCarregando(false);
+     }
+-  }, [usuario, mostrarToast]);
++  }, [mostrarToast]);
+ 
+   useEffect(() => {
+     recarregar();
+-  }, [recarregar]);
++  }, [usuario, recarregar]);
+ 
+   return (
+     <LojaContext.Provider value={{ loja, semLoja, carregando, erro, recarregar }}>
+diff --git a/src/pages/autenticacao/PaginaCadastro.tsx b/src/pages/autenticacao/PaginaCadastro.tsx
+index 90b04ba..acbafb1 100644
+--- a/src/pages/autenticacao/PaginaCadastro.tsx
++++ b/src/pages/autenticacao/PaginaCadastro.tsx
+@@ -108,6 +108,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+   const [erros, setErros] = useState<Record<string, string>>({});
+   const [cadastroConcluido, setCadastroConcluido] = useState(false);
+   const [carregando, setCarregando] = useState(false);
++  const [contaCriada, setContaCriada] = useState(false);
++  const finalizando = useRef(false);
+   // Spec §7: 429 no envio de código → bloqueia o botão Avançar com temporizador.
+   const [bloqueadoEnvioAte, setBloqueadoEnvioAte] = useState<number | null>(null);
+ 
+@@ -137,12 +139,21 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+ 
+   // Etapa 1 — Dados da Loja (antiga etapa 2)
+   const [fotoUrl, setFotoUrl] = useState('');
++  const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
++  const [logoPreview, setLogoPreview] = useState('');
+   const [enviandoLogo, setEnviandoLogo] = useState(false);
+   const fileInputRef = useRef<HTMLInputElement>(null);
+   const [nomeLoja, setNomeLoja] = useState('');
+   const [descricaoLoja, setDescricaoLoja] = useState('');
+   const [categoriaLoja, setCategoriaLoja] = useState('');
+ 
++  useEffect(() => {
++    if (!logoArquivo) return;
++    const preview = URL.createObjectURL(logoArquivo);
++    setLogoPreview(preview);
++    return () => URL.revokeObjectURL(preview);
++  }, [logoArquivo]);
++
+   // Etapa 2 — Endereço (antiga etapa 3)
+   const [cep, setCep] = useState('');
+   const [rua, setRua] = useState('');
+@@ -354,17 +365,18 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+   };
+ 
+   const voltar = () => {
+-    setEtapaAtual(prev => Math.max(prev - 1, 0));
++    const primeiraEtapa = contaCriada ? indices.LOJA : 0;
++    setEtapaAtual(prev => Math.max(prev - 1, primeiraEtapa));
+     window.scrollTo(0, 0);
+   };
+ 
+-  const montarPayloadLoja = () => {
++  const montarPayloadLoja = (imagemUrl: string) => {
+     const serializarHorario = (dia: { aberto: boolean; abertura: string; fechamento: string }) =>
+       dia.aberto ? `${dia.abertura} - ${dia.fechamento}` : 'Fechado';
+ 
+     return {
+       nome: nomeLoja,
+-      imagemUrl: fotoUrl || 'https://via.placeholder.com/150',
++      imagemUrl: imagemUrl || 'https://via.placeholder.com/150',
+       descricao: descricaoLoja || '',
+       categoria: categoriaLoja,
+       isAberto: true,
+@@ -406,10 +418,12 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+   };
+ 
+   const finalizar = async () => {
++    if (finalizando.current) return;
++    finalizando.current = true;
+     setCarregando(true);
+     setErros({});
+     try {
+-      if (modo === 'completo') {
++      if (modo === 'completo' && !contaCriada) {
+         if (!emailEstaVerificado(email)) {
+           setEtapaAtual(indices.VERIFICACAO);
+           setErros({ geral: 'Confirme seu e-mail antes de finalizar o cadastro.' });
+@@ -426,17 +440,34 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+ 
+         // definirSessao já persiste o token em '@nhac:token' — não duplicar.
+         const tokenValido = respostaRegistro.accessToken || respostaRegistro.token || '';
++        if (!tokenValido || !respostaRegistro.usuarioId) {
++          throw new Error('Não foi possível iniciar sua sessão. Faça login para continuar o cadastro da loja.');
++        }
+         definirSessao(tokenValido, {
+-          id: respostaRegistro.usuarioId ?? email,
++          id: respostaRegistro.usuarioId,
+           nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
+           email,
+           telefone,
+-          cargo: (respostaRegistro.papel as 'administrador') ?? 'administrador',
++          // O dono administra a loja após o backend concluir sua criação.
++          cargo: 'administrador',
+         });
++        setContaCriada(true);
+         limparEmailVerificado();
+       }
+ 
+-      await criarLoja(montarPayloadLoja());
++      // O upload exige autenticação. A seleção anterior é só uma prévia local.
++      let imagemUrl = fotoUrl;
++      if (logoArquivo && !imagemUrl) {
++        setEnviandoLogo(true);
++        try {
++          imagemUrl = await enviarImagem(logoArquivo, 'lojas');
++          setFotoUrl(imagemUrl);
++        } finally {
++          setEnviandoLogo(false);
++        }
++      }
++
++      await criarLoja(montarPayloadLoja(imagemUrl));
+       await recarregarLoja();
+ 
+       if (modo === 'apenas-loja') {
+@@ -460,6 +491,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+         setErros({ geral: tratado.mensagemGeral ?? 'Erro ao cadastrar. Tente novamente.' });
+       }
+     } finally {
++      finalizando.current = false;
+       setCarregando(false);
+     }
+   };
+@@ -471,12 +503,11 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+   };
+ 
+   /**
+-   * Sobe a logo para o Firebase Storage via POST /uploads/imagem (pasta
+-   * "lojas") e guarda a URL PERSISTENTE devolvida pelo backend. Antes era
+-   * usado URL.createObjectURL(), que gera uma URL local (blob:) — ela não
+-   * sobrevive ao fim da sessão e nunca chegava ao servidor.
++   * Valida e mostra a logo sem chamar uma rota protegida antes do registro.
++   * Ao finalizar, somente a URL persistente retornada pelo upload autenticado
++   * será enviada na criação da loja; a URL blob: serve apenas para a prévia.
+    */
+-  const lidarComArquivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
++  const lidarComArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
+     const arquivo = e.target.files?.[0];
+     e.target.value = '';
+     if (!arquivo) return;
+@@ -488,17 +519,9 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+       return;
+     }
+ 
+-    setEnviandoLogo(true);
+-    try {
+-      const url = await enviarImagem(arquivo, 'lojas');
+-      setFotoUrl(url);
+-      setErros((prev) => { const n = { ...prev }; delete n.imagemUrl; return n; });
+-    } catch (err) {
+-      const tratado = tratarErroApi(err);
+-      setErros((prev) => ({ ...prev, imagemUrl: tratado.mensagemGeral ?? 'Não foi possível enviar a imagem.' }));
+-    } finally {
+-      setEnviandoLogo(false);
+-    }
++    setLogoArquivo(arquivo);
++    setFotoUrl('');
++    setErros((prev) => { const n = { ...prev }; delete n.imagemUrl; return n; });
+   };
+ 
+   const buscarCep = async (valorCep: string) => {
+@@ -693,12 +716,12 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+                 <span className={estilos.rotuloTextarea}>Logo da Loja</span>
+                 <div 
+                   className={estilos.uploadArea} 
+-                  onClick={() => { if (!enviandoLogo) fileInputRef.current?.click(); }}
++                  onClick={() => { if (!carregando) fileInputRef.current?.click(); }}
+                 >
+                   {enviandoLogo ? (
+                     <span>Enviando imagem...</span>
+-                  ) : fotoUrl ? (
+-                    <img src={fotoUrl} alt="Logo" className={estilos.previewImagem} />
++                  ) : logoPreview || fotoUrl ? (
++                    <img src={logoPreview || fotoUrl} alt="Logo" className={estilos.previewImagem} />
+                   ) : (
+                     <>
+                       <UploadCloud size={40} className={estilos.uploadIcone} />
+@@ -707,7 +730,9 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+                   )}
+                   <input 
+                     type="file" 
+-                    accept="image/*" 
++                    accept="image/jpeg,image/png,image/webp"
++                    aria-label="Logo da Loja"
++                    disabled={carregando}
+                     ref={fileInputRef}
+                     onChange={lidarComArquivo}
+                     style={{ display: 'none' }}
+@@ -1043,8 +1068,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
+           {/* Navegação — oculta na etapa de verificação (ações internas) */}
+           {!(modo === 'completo' && etapaAtual === indices.VERIFICACAO) && (
+             <div className={estilos.acoes}>
+-              {etapaAtual > 0 ? (
+-                <Botao type="button" variante="secundario" onClick={voltar}>
++              {etapaAtual > (contaCriada ? indices.LOJA : 0) ? (
++                <Botao type="button" variante="secundario" onClick={voltar} disabled={carregando}>
+                   Voltar
+                 </Botao>
+               ) : (
+diff --git a/src/pages/autenticacao/PaginaLogin.tsx b/src/pages/autenticacao/PaginaLogin.tsx
+index a7364bf..a8733f4 100644
+--- a/src/pages/autenticacao/PaginaLogin.tsx
++++ b/src/pages/autenticacao/PaginaLogin.tsx
+@@ -73,8 +73,12 @@ export default function PaginaLogin() {
+ 
+     setCarregando(true);
+     try {
+-      await entrar(email.trim().toLowerCase(), senha);
+-      navigate('/');
++      const usuario = await entrar(email.trim().toLowerCase(), senha);
++      if (usuario.cargo === 'cliente') {
++        navigate('/onboarding-loja');
++      } else {
++        navigate(usuario.cargo === 'atendente' ? '/pedidos' : '/');
++      }
+     } catch (err: unknown) {
+       const tratado = tratarErroApi(err);
+       if (tratado.rateLimit) {
+diff --git a/src/services/api.ts b/src/services/api.ts
+index 476b72f..1e56453 100644
+--- a/src/services/api.ts
++++ b/src/services/api.ts
+@@ -163,6 +163,22 @@ export interface LoginResponseDTO {
+   email?: string;
+   isNovoUsuario?: boolean;
+   papel: string;
++  cargo?: string | null;
++}
++
++export interface UsuarioResponseDTO {
++  id: string;
++  nome: string;
++  email: string;
++  telefone: string;
++  imagemUrl?: string;
++  papel: string;
++  cargo?: string | null;
++}
++
++/** Perfil autenticado, consultado ao restaurar a sessão para atualizar o cargo. */
++export function buscarUsuario(id: string): Promise<UsuarioResponseDTO> {
++  return requisicao<UsuarioResponseDTO>(`/usuarios/${encodeURIComponent(id)}`);
+ }
+ 
+ /**
+diff --git a/src/types/index.ts b/src/types/index.ts
+index 67590e9..efacb2a 100644
+--- a/src/types/index.ts
++++ b/src/types/index.ts
+@@ -1,6 +1,9 @@
+ // ==================== Usuário e Autenticação ====================
+ 
+-export type Cargo = 'administrador' | 'gerente' | 'atendente';
++// Cargo exibido no painel. `cliente` é o estado temporário de uma conta
++// recém-criada que ainda não cadastrou sua loja; ele não recebe permissões
++// do painel e só pode entrar no onboarding.
++export type Cargo = 'administrador' | 'gerente' | 'atendente' | 'cliente';
+ 
+ export interface Usuario {
+   id: string;
+diff --git a/src/utils/cargo.ts b/src/utils/cargo.ts
+new file mode 100644
+index 0000000..ec22186
+--- /dev/null
++++ b/src/utils/cargo.ts
+@@ -0,0 +1,17 @@
++import { Cargo } from '../types';
++
++/** Cargo da interface; a autorização das operações continua no backend. */
++export function mapearCargo(papel?: string, cargo?: string | null): Cargo {
++  // CLIENTE é a conta recém-criada, que ainda vai cadastrar sua própria loja.
++  if (papel === 'LOJISTA' || papel === 'ADMIN') {
++    return 'administrador';
++  }
++  if (papel === 'CLIENTE') return 'cliente';
++  if (papel === 'FUNCIONARIO') {
++    const normalizado = cargo?.trim().toLowerCase();
++    if (normalizado === 'administrador' || normalizado === 'gerente') {
++      return normalizado;
++    }
++  }
++  return 'atendente';
++}
+-- 
+2.51.1
+

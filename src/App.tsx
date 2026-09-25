@@ -4,6 +4,7 @@ import { ProvedorAutenticacao } from './contexts/AutenticacaoContext';
 import { ProvedorToast } from './contexts/ToastContext';
 import { ProvedorLoja } from './contexts/LojaContext';
 import RotaProtegida from './components/compartilhados/RotaProtegida';
+import { Cargo } from './types';
 import RotaExigeLoja from './components/compartilhados/RotaExigeLoja';
 
 // Páginas de autenticação
@@ -32,7 +33,7 @@ function RotaProtegidaComLoja({
   cargosPermitidos,
 }: {
   children: React.ReactNode;
-  cargosPermitidos?: ('administrador' | 'gerente' | 'atendente')[];
+  cargosPermitidos?: Cargo[];
 }) {
   return (
     <RotaProtegida cargosPermitidos={cargosPermitidos}>
@@ -57,7 +58,7 @@ function App() {
               <Route
                 path="/onboarding-loja"
                 element={
-                  <RotaProtegida cargosPermitidos={['administrador', 'gerente']}>
+                  <RotaProtegida cargosPermitidos={['cliente', 'administrador']}>
                     <PaginaCadastro modo="apenas-loja" />
                   </RotaProtegida>
                 }

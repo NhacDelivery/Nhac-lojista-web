@@ -108,6 +108,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   const [erros, setErros] = useState<Record<string, string>>({});
   const [cadastroConcluido, setCadastroConcluido] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  const [contaCriada, setContaCriada] = useState(false);
+  const finalizando = useRef(false);
   // Spec §7: 429 no envio de código → bloqueia o botão Avançar com temporizador.
   const [bloqueadoEnvioAte, setBloqueadoEnvioAte] = useState<number | null>(null);
 
@@ -137,11 +139,20 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
 
   // Etapa 1 — Dados da Loja (antiga etapa 2)
   const [fotoUrl, setFotoUrl] = useState('');
+  const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState('');
   const [enviandoLogo, setEnviandoLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nomeLoja, setNomeLoja] = useState('');
   const [descricaoLoja, setDescricaoLoja] = useState('');
   const [categoriaLoja, setCategoriaLoja] = useState('');
+
+  useEffect(() => {
+    if (!logoArquivo) return;
+    const preview = URL.createObjectURL(logoArquivo);
+    setLogoPreview(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [logoArquivo]);
 
   // Etapa 2 — Endereço (antiga etapa 3)
   const [cep, setCep] = useState('');
@@ -354,17 +365,18 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   };
 
   const voltar = () => {
-    setEtapaAtual(prev => Math.max(prev - 1, 0));
+    const primeiraEtapa = contaCriada ? indices.LOJA : 0;
+    setEtapaAtual(prev => Math.max(prev - 1, primeiraEtapa));
     window.scrollTo(0, 0);
   };
 
-  const montarPayloadLoja = () => {
+  const montarPayloadLoja = (imagemUrl: string) => {
     const serializarHorario = (dia: { aberto: boolean; abertura: string; fechamento: string }) =>
       dia.aberto ? `${dia.abertura} - ${dia.fechamento}` : 'Fechado';
 
     return {
       nome: nomeLoja,
-      imagemUrl: fotoUrl || 'https://via.placeholder.com/150',
+      imagemUrl: imagemUrl || 'https://via.placeholder.com/150',
       descricao: descricaoLoja || '',
       categoria: categoriaLoja,
       isAberto: true,
@@ -406,10 +418,12 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   };
 
   const finalizar = async () => {
+    if (finalizando.current) return;
+    finalizando.current = true;
     setCarregando(true);
     setErros({});
     try {
-      if (modo === 'completo') {
+      if (modo === 'completo' && !contaCriada) {
         if (!emailEstaVerificado(email)) {
           setEtapaAtual(indices.VERIFICACAO);
           setErros({ geral: 'Confirme seu e-mail antes de finalizar o cadastro.' });
@@ -426,17 +440,34 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
 
         // definirSessao já persiste o token em '@nhac:token' — não duplicar.
         const tokenValido = respostaRegistro.accessToken || respostaRegistro.token || '';
+        if (!tokenValido || !respostaRegistro.usuarioId) {
+          throw new Error('Não foi possível iniciar sua sessão. Faça login para continuar o cadastro da loja.');
+        }
         definirSessao(tokenValido, {
-          id: respostaRegistro.usuarioId ?? email,
+          id: respostaRegistro.usuarioId,
           nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
           email,
           telefone,
-          cargo: (respostaRegistro.papel as 'administrador') ?? 'administrador',
+          // O dono administra a loja após o backend concluir sua criação.
+          cargo: 'administrador',
         });
+        setContaCriada(true);
         limparEmailVerificado();
       }
 
-      await criarLoja(montarPayloadLoja());
+      // O upload exige autenticação. A seleção anterior é só uma prévia local.
+      let imagemUrl = fotoUrl;
+      if (logoArquivo && !imagemUrl) {
+        setEnviandoLogo(true);
+        try {
+          imagemUrl = await enviarImagem(logoArquivo, 'lojas');
+          setFotoUrl(imagemUrl);
+        } finally {
+          setEnviandoLogo(false);
+        }
+      }
+
+      await criarLoja(montarPayloadLoja(imagemUrl));
       await recarregarLoja();
 
       if (modo === 'apenas-loja') {
@@ -460,6 +491,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         setErros({ geral: tratado.mensagemGeral ?? 'Erro ao cadastrar. Tente novamente.' });
       }
     } finally {
+      finalizando.current = false;
       setCarregando(false);
     }
   };
@@ -471,12 +503,11 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   };
 
   /**
-   * Sobe a logo para o Firebase Storage via POST /uploads/imagem (pasta
-   * "lojas") e guarda a URL PERSISTENTE devolvida pelo backend. Antes era
-   * usado URL.createObjectURL(), que gera uma URL local (blob:) — ela não
-   * sobrevive ao fim da sessão e nunca chegava ao servidor.
+   * Valida e mostra a logo sem chamar uma rota protegida antes do registro.
+   * Ao finalizar, somente a URL persistente retornada pelo upload autenticado
+   * será enviada na criação da loja; a URL blob: serve apenas para a prévia.
    */
-  const lidarComArquivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const lidarComArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const arquivo = e.target.files?.[0];
     e.target.value = '';
     if (!arquivo) return;
@@ -488,17 +519,9 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       return;
     }
 
-    setEnviandoLogo(true);
-    try {
-      const url = await enviarImagem(arquivo, 'lojas');
-      setFotoUrl(url);
-      setErros((prev) => { const n = { ...prev }; delete n.imagemUrl; return n; });
-    } catch (err) {
-      const tratado = tratarErroApi(err);
-      setErros((prev) => ({ ...prev, imagemUrl: tratado.mensagemGeral ?? 'Não foi possível enviar a imagem.' }));
-    } finally {
-      setEnviandoLogo(false);
-    }
+    setLogoArquivo(arquivo);
+    setFotoUrl('');
+    setErros((prev) => { const n = { ...prev }; delete n.imagemUrl; return n; });
   };
 
   const buscarCep = async (valorCep: string) => {
@@ -693,12 +716,12 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 <span className={estilos.rotuloTextarea}>Logo da Loja</span>
                 <div 
                   className={estilos.uploadArea} 
-                  onClick={() => { if (!enviandoLogo) fileInputRef.current?.click(); }}
+                  onClick={() => { if (!carregando) fileInputRef.current?.click(); }}
                 >
                   {enviandoLogo ? (
                     <span>Enviando imagem...</span>
-                  ) : fotoUrl ? (
-                    <img src={fotoUrl} alt="Logo" className={estilos.previewImagem} />
+                  ) : logoPreview || fotoUrl ? (
+                    <img src={logoPreview || fotoUrl} alt="Logo" className={estilos.previewImagem} />
                   ) : (
                     <>
                       <UploadCloud size={40} className={estilos.uploadIcone} />
@@ -707,7 +730,9 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                   )}
                   <input 
                     type="file" 
-                    accept="image/*" 
+                    accept="image/jpeg,image/png,image/webp"
+                    aria-label="Logo da Loja"
+                    disabled={carregando}
                     ref={fileInputRef}
                     onChange={lidarComArquivo}
                     style={{ display: 'none' }}
@@ -1043,8 +1068,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
           {/* Navegação — oculta na etapa de verificação (ações internas) */}
           {!(modo === 'completo' && etapaAtual === indices.VERIFICACAO) && (
             <div className={estilos.acoes}>
-              {etapaAtual > 0 ? (
-                <Botao type="button" variante="secundario" onClick={voltar}>
+              {etapaAtual > (contaCriada ? indices.LOJA : 0) ? (
+                <Botao type="button" variante="secundario" onClick={voltar} disabled={carregando}>
                   Voltar
                 </Botao>
               ) : (

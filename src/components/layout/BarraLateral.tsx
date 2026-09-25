@@ -46,7 +46,7 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
   recolhida = false,
   onToggleRecolher
 }) => {
-  const { usuario, trocarCargo } = useAutenticacao();
+  const { usuario } = useAutenticacao();
 
   if (!usuario) return null;
 
@@ -108,15 +108,9 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
           </div>
           <div className={estilos.infoUsuario}>
             <span className={estilos.nome}>{usuario.nomeCompleto}</span>
-            <select 
-              className={estilos.seletorCargo}
-              value={usuario.cargo}
-              onChange={(e) => trocarCargo(e.target.value as Cargo)}
-            >
-              <option value="administrador">Administrador</option>
-              <option value="gerente">Gerente</option>
-              <option value="atendente">Atendente</option>
-            </select>
+            <span className={estilos.seletorCargo}>
+              {usuario.cargo.charAt(0).toUpperCase() + usuario.cargo.slice(1)}
+            </span>
           </div>
         </div>
       </div>

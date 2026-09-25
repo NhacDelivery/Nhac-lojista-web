@@ -1,6 +1,9 @@
 // ==================== Usuário e Autenticação ====================
 
-export type Cargo = 'administrador' | 'gerente' | 'atendente';
+// Cargo exibido no painel. `cliente` é o estado temporário de uma conta
+// recém-criada que ainda não cadastrou sua loja; ele não recebe permissões
+// do painel e só pode entrar no onboarding.
+export type Cargo = 'administrador' | 'gerente' | 'atendente' | 'cliente';
 
 export interface Usuario {
   id: string;

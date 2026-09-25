@@ -163,6 +163,22 @@ export interface LoginResponseDTO {
   email?: string;
   isNovoUsuario?: boolean;
   papel: string;
+  cargo?: string | null;
+}
+
+export interface UsuarioResponseDTO {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  imagemUrl?: string;
+  papel: string;
+  cargo?: string | null;
+}
+
+/** Perfil autenticado, consultado ao restaurar a sessão para atualizar o cargo. */
+export function buscarUsuario(id: string): Promise<UsuarioResponseDTO> {
+  return requisicao<UsuarioResponseDTO>(`/usuarios/${encodeURIComponent(id)}`);
 }
 
 /**

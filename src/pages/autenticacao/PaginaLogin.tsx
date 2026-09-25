@@ -73,8 +73,12 @@ export default function PaginaLogin() {
 
     setCarregando(true);
     try {
-      await entrar(email.trim().toLowerCase(), senha);
-      navigate('/');
+      const usuario = await entrar(email.trim().toLowerCase(), senha);
+      if (usuario.cargo === 'cliente') {
+        navigate('/onboarding-loja');
+      } else {
+        navigate(usuario.cargo === 'atendente' ? '/pedidos' : '/');
+      }
     } catch (err: unknown) {
       const tratado = tratarErroApi(err);
       if (tratado.rateLimit) {
