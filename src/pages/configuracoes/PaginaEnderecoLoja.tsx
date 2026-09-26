@@ -8,7 +8,7 @@ import Botao from '../../components/ui/Botao';
 import { MapPin } from 'lucide-react';
 import { mascaraCep, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
 import { useLoja } from '../../contexts/LojaContext';
-import { atualizarLoja, buscarCep as apiBuscarCep } from '../../services/api';
+import { atualizarLoja, atualizarLocalizacaoLoja, buscarCep as apiBuscarCep } from '../../services/api';
 import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaEnderecoLoja.module.css';
@@ -25,6 +25,8 @@ const PaginaEnderecoLoja = () => {
   const [bairro, setBairro] = useState('');
   const [cidade, setCidade] = useState('');
   const [uf, setUf] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -42,7 +44,25 @@ const PaginaEnderecoLoja = () => {
     setCidade(endereco.cidade || '');
     // O backend usa `estado` (LojaDetalhesDTO.EnderecoDTO), não `uf`.
     setUf(endereco.estado || '');
+    setLatitude(loja?.latitude && loja.latitude !== 0 ? String(loja.latitude) : '');
+    setLongitude(loja?.longitude && loja.longitude !== 0 ? String(loja.longitude) : '');
   }, [loja]);
+
+  const usarLocalizacaoAtual = () => {
+    if (!navigator.geolocation) {
+      setErroGeral('Este navegador não oferece acesso à localização. Digite as coordenadas da loja.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLatitude(String(coords.latitude));
+        setLongitude(String(coords.longitude));
+        setErroGeral(null);
+      },
+      () => setErroGeral('Não foi possível obter sua posição. Ative o GPS ou digite as coordenadas da loja.'),
+      { enableHighAccuracy: true, timeout: 12000 },
+    );
+  };
 
   /** Consulta o ViaCEP usando o helper do api.ts (mesmo do cadastro). */
   const buscarCep = async (valorCep: string) => {
@@ -76,6 +96,11 @@ const PaginaEnderecoLoja = () => {
     if (!bairro) novosErros.bairro = 'Bairro é obrigatório';
     if (!cidade) novosErros.cidade = 'Cidade é obrigatória';
     if (!uf) novosErros.uf = 'UF é obrigatório';
+    const lat = Number(latitude.replace(',', '.'));
+    const lng = Number(longitude.replace(',', '.'));
+    if (!latitude.trim() || !Number.isFinite(lat) || Math.abs(lat) > 90) novosErros.latitude = 'Informe uma latitude válida';
+    if (!longitude.trim() || !Number.isFinite(lng) || Math.abs(lng) > 180) novosErros.longitude = 'Informe uma longitude válida';
+    if (lat === 0 && lng === 0) novosErros.latitude = '0,0 não é a posição da loja';
 
     if (Object.keys(novosErros).length > 0) {
       setErros(novosErros);
@@ -106,6 +131,7 @@ const PaginaEnderecoLoja = () => {
           estado: uf,
         },
       });
+      await atualizarLocalizacaoLoja(id, lat, lng);
       await recarregar();
       mostrarToast('Endereço salvo com sucesso!');
       navigate('/configuracoes');
@@ -139,6 +165,12 @@ const PaginaEnderecoLoja = () => {
             <div className={estilos.grid2}>
               <InputTexto rotulo="Rua" valor={rua} aoMudar={setRua} erro={erros.rua} obrigatorio />
               <InputTexto rotulo="Número" valor={numero} aoMudar={setNumero} erro={erros.numero} obrigatorio />
+            </div>
+            <p>Informe a posição exata do estabelecimento para que motoboys próximos recebam os pedidos. Use o GPS somente se estiver na loja.</p>
+            <Botao variante="fantasma" onClick={usarLocalizacaoAtual}>Usar minha localização atual</Botao>
+            <div className={estilos.grid2}>
+              <InputTexto rotulo="Latitude da loja" valor={latitude} aoMudar={setLatitude} erro={erros.latitude} obrigatorio />
+              <InputTexto rotulo="Longitude da loja" valor={longitude} aoMudar={setLongitude} erro={erros.longitude} obrigatorio />
             </div>
 
             <div className={estilos.grid2}>

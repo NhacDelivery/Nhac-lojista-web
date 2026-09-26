@@ -350,6 +350,16 @@ export interface LojaCreateDTO {
 
 export interface LojaResponseDTO extends LojaCreateDTO {
   id: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+/** Coordenadas reais do estabelecimento, usadas para encontrar entregadores próximos. */
+export async function atualizarLocalizacaoLoja(id: string, latitude: number, longitude: number): Promise<LojaResponseDTO> {
+  return requisicao<LojaResponseDTO>(`/lojas/${id}/localizacao`, {
+    method: 'PATCH',
+    body: JSON.stringify({ latitude, longitude }),
+  });
 }
 
 /**
