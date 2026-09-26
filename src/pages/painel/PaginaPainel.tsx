@@ -122,6 +122,15 @@ const PaginaPainel = () => {
             <span className={estilos.rotuloAgora}>AGORA</span>
           </div>
         </header>
+        {(!loja.latitude || !loja.longitude) && (
+          <div className={estilos.avisoLocalizacao} role="alert">
+            <span>Configure a localização da loja para que motoboys próximos recebam seus pedidos.</span>
+            <Botao variante="secundario" onClick={() => navigate('/configuracoes/endereco')}>
+              Configurar localização
+            </Botao>
+          </div>
+        )}
+
 
         <div className={estilos.duasColunas}>
           <div className={estilos.colunaEsquerda}>
