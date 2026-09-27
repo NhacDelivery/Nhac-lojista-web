@@ -8,7 +8,7 @@ import Botao from '../../components/ui/Botao';
 import { MapPin } from 'lucide-react';
 import { mascaraCep, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
 import { useLoja } from '../../contexts/LojaContext';
-import { atualizarLoja, atualizarLocalizacaoLoja, buscarCep as apiBuscarCep } from '../../services/api';
+import { atualizarLocalizacaoLoja, buscarCep as apiBuscarCep } from '../../services/api';
 import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaEnderecoLoja.module.css';
@@ -111,17 +111,12 @@ const PaginaEnderecoLoja = () => {
     setErroGeral(null);
     setSalvando(true);
     try {
-      // PUT /lojas/{id} exige o payload COMPLETO (o backend não aceita
-      // parcial) — espalha a loja carregada e sobrescreve só o endereço.
       const lojaAtual = loja;
       if (!lojaAtual) {
         setErroGeral('Loja não carregada. Recarregue a página e tente novamente.');
         return;
       }
-      const { id, ...lojaSemId } = lojaAtual;
-      await atualizarLoja(id, {
-        ...lojaSemId,
-        endereco: {
+      await atualizarLocalizacaoLoja(lojaAtual.id, lat, lng, {
           cep: cep.replace(/\D/g, ''),
           rua,
           numero,
@@ -129,9 +124,7 @@ const PaginaEnderecoLoja = () => {
           bairro,
           cidade,
           estado: uf,
-        },
       });
-      await atualizarLocalizacaoLoja(id, lat, lng);
       await recarregar();
       mostrarToast('Endereço salvo com sucesso!');
       navigate('/configuracoes');

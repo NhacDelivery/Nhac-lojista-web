@@ -22,7 +22,7 @@ export interface ChatSocket {
   aoDesconectar: (callback: () => void) => void;
   aoErro: (callback: (mensagem: string) => void) => void;
   assinarConversa: (conversaId: string, onMensagem: (mensagem: MensagemDTO) => void) => () => void;
-  enviarMensagem: (conversaId: string, conteudo: string) => void;
+  enviarMensagem: (conversaId: string, conteudo: string, clientMessageId: string) => boolean;
   desconectar: () => void;
 }
 
@@ -34,6 +34,7 @@ export interface ChatSocket {
  */
 export function conectarChatSocket(): ChatSocket {
   const assinaturasPorConversa = new Map<string, StompSubscription>();
+  const ouvintes = new Map<string, (mensagem: MensagemDTO) => void>();
 
   const client = new Client({
     webSocketFactory: () => new SockJS(WS_BASE_URL) as unknown as WebSocket,
@@ -50,44 +51,66 @@ export function conectarChatSocket(): ChatSocket {
     };
   };
 
+  const assinar = (conversaId: string) => {
+    const ouvinte = ouvintes.get(conversaId);
+    if (!ouvinte || !client.connected) return;
+    assinaturasPorConversa.get(conversaId)?.unsubscribe();
+    assinaturasPorConversa.set(conversaId, client.subscribe(`/topic/conversas/${conversaId}`, (frame: IMessage) => {
+      try {
+        ouvinte(JSON.parse(frame.body) as MensagemDTO);
+      } catch {
+        // Uma mensagem inválida não impede a reconexão; o histórico cobre a lacuna.
+      }
+    }));
+  };
+
+  client.onConnect = () => {
+    assinaturasPorConversa.clear();
+    ouvintes.forEach((_, id) => assinar(id));
+    aoConectar?.();
+  };
+  client.onWebSocketClose = () => {
+    assinaturasPorConversa.clear();
+    aoDesconectar?.();
+  };
+  let aoConectar: (() => void) | undefined;
+  let aoDesconectar: (() => void) | undefined;
   client.activate();
 
   return {
     aoConectar(callback) {
-      client.onConnect = callback;
+      aoConectar = callback;
+      if (client.connected) callback();
     },
     aoDesconectar(callback) {
-      client.onDisconnect = callback;
+      aoDesconectar = callback;
     },
     aoErro(callback) {
       client.onStompError = (frame) => callback(frame.headers?.message ?? 'Erro na conexão do chat.');
       client.onWebSocketError = () => callback('Não foi possível conectar ao chat em tempo real.');
     },
     assinarConversa(conversaId, onMensagem) {
-      const assinatura = client.subscribe(`/topic/conversas/${conversaId}`, (frame: IMessage) => {
-        try {
-          const mensagem: MensagemDTO = JSON.parse(frame.body);
-          onMensagem(mensagem);
-        } catch {
-          // corpo inesperado — ignora silenciosamente, o histórico REST cobre o gap
-        }
-      });
-      assinaturasPorConversa.set(conversaId, assinatura);
+      ouvintes.set(conversaId, onMensagem);
+      assinar(conversaId);
 
       return () => {
-        assinatura.unsubscribe();
+        assinaturasPorConversa.get(conversaId)?.unsubscribe();
         assinaturasPorConversa.delete(conversaId);
+        ouvintes.delete(conversaId);
       };
     },
-    enviarMensagem(conversaId, conteudo) {
+    enviarMensagem(conversaId, conteudo, clientMessageId) {
+      if (!client.connected) return false;
       client.publish({
         destination: `/app/conversas/${conversaId}/enviar`,
-        body: JSON.stringify({ conteudo }),
+        body: JSON.stringify({ conteudo, clientMessageId }),
       });
+      return true;
     },
     desconectar() {
       assinaturasPorConversa.forEach((assinatura) => assinatura.unsubscribe());
       assinaturasPorConversa.clear();
+      ouvintes.clear();
       client.deactivate();
     },
   };

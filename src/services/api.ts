@@ -355,10 +355,12 @@ export interface LojaResponseDTO extends LojaCreateDTO {
 }
 
 /** Coordenadas reais do estabelecimento, usadas para encontrar entregadores próximos. */
-export async function atualizarLocalizacaoLoja(id: string, latitude: number, longitude: number): Promise<LojaResponseDTO> {
+export async function atualizarLocalizacaoLoja(
+  id: string, latitude: number, longitude: number, endereco?: EnderecoLojaDTO
+): Promise<LojaResponseDTO> {
   return requisicao<LojaResponseDTO>(`/lojas/${id}/localizacao`, {
     method: 'PATCH',
-    body: JSON.stringify({ latitude, longitude }),
+    body: JSON.stringify({ latitude, longitude, endereco }),
   });
 }
 
