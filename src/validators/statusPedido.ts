@@ -50,9 +50,9 @@ export function ehStatusFinal(status: StatusPedido): boolean {
   return proximosStatusPermitidos(status).length === 0;
 }
 
-/** Cancelamento permitido apenas enquanto ainda não saiu para entrega. */
+/** Sem estorno no backend, o cancelamento só é permitido antes de confirmar o pagamento. */
 export function podeCancelar(status: StatusPedido): boolean {
-  return proximosStatusPermitidos(status).includes('CANCELADO');
+  return status === 'PENDENTE';
 }
 
 /** Rótulo de ação para o botão que avança para o próximo status. */
