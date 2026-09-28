@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Cartao from '../../components/ui/Cartao';
 import Botao from '../../components/ui/Botao';
@@ -28,25 +28,29 @@ const PaginaFinanceiro = () => {
   const [dados, setDados] = useState<FinanceiroDTO | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const requisicaoAtual = useRef(0);
 
   const CORES_PIE = ['#FF6961', '#FF8A84', '#E85D56', '#5D201C', '#8B4944', '#D4A8A5'];
 
   const carregar = useCallback(async () => {
+    const requisicao = ++requisicaoAtual.current;
     try {
       setCarregando(true);
       setErro(null);
       const resposta = await buscarFinanceiro(periodo);
-      setDados(resposta);
+      if (requisicao === requisicaoAtual.current) setDados(resposta);
     } catch (err) {
       const tratado = tratarErroApi(err);
-      setErro(tratado.mensagemGeral ?? 'Não foi possível carregar os dados financeiros.');
+      if (requisicao === requisicaoAtual.current)
+        setErro(tratado.mensagemGeral ?? 'Não foi possível carregar os dados financeiros.');
     } finally {
-      setCarregando(false);
+      if (requisicao === requisicaoAtual.current) setCarregando(false);
     }
   }, [periodo]);
 
   useEffect(() => {
     carregar();
+    return () => { requisicaoAtual.current++; };
   }, [carregar]);
 
   return (
@@ -62,6 +66,7 @@ const PaginaFinanceiro = () => {
               {p.rotulo}
             </Botao>
           ))}
+          <Botao variante="secundario" onClick={carregar} disabled={carregando}>Atualizar dados</Botao>
         </div>
 
         {carregando ? (

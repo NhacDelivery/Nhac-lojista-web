@@ -92,7 +92,7 @@ const PaginaEditarInfoLoja = () => {
 
   return (
     <LayoutPagina titulo="Editar informações">
-      <form onSubmit={handleSalvar} className={estilos.form}>
+      <form onSubmit={handleSalvar} className={estilos.form} noValidate>
         {erro && (
           <div style={{ color: 'var(--nhac-erro, #e53935)', marginBottom: '1rem', fontSize: '0.875rem' }}>
             {erro}

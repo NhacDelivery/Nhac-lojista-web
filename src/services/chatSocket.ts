@@ -15,14 +15,15 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { MensagemDTO } from './api';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+const WS_BASE_URL = process.env.REACT_APP_WS_URL ||
+  (process.env.NODE_ENV === 'production' ? `${window.location.origin}/ws` : 'http://localhost:8080/ws');
 
 export interface ChatSocket {
   aoConectar: (callback: () => void) => void;
   aoDesconectar: (callback: () => void) => void;
   aoErro: (callback: (mensagem: string) => void) => void;
   assinarConversa: (conversaId: string, onMensagem: (mensagem: MensagemDTO) => void) => () => void;
-  enviarMensagem: (conversaId: string, conteudo: string) => void;
+  enviarMensagem: (conversaId: string, conteudo: string, clientMessageId: string) => boolean;
   desconectar: () => void;
 }
 
@@ -34,6 +35,10 @@ export interface ChatSocket {
  */
 export function conectarChatSocket(): ChatSocket {
   const assinaturasPorConversa = new Map<string, StompSubscription>();
+  const conversasDesejadas = new Map<string, (mensagem: MensagemDTO) => void>();
+  let conectado: (() => void) | undefined;
+  let desconectado: (() => void) | undefined;
+  let erro: ((mensagem: string) => void) | undefined;
 
   const client = new Client({
     webSocketFactory: () => new SockJS(WS_BASE_URL) as unknown as WebSocket,
@@ -50,44 +55,52 @@ export function conectarChatSocket(): ChatSocket {
     };
   };
 
+  const assinar = (id: string, onMensagem: (mensagem: MensagemDTO) => void) => {
+    if (!client.connected) return;
+    assinaturasPorConversa.get(id)?.unsubscribe();
+    const assinatura = client.subscribe(`/topic/conversas/${id}`, (frame: IMessage) => {
+      try { onMensagem(JSON.parse(frame.body) as MensagemDTO); } catch { /* histórico REST recupera o evento */ }
+    });
+    assinaturasPorConversa.set(id, assinatura);
+  };
+  client.onConnect = () => {
+    conversasDesejadas.forEach((handler, id) => assinar(id, handler));
+    client.subscribe('/user/queue/erros', (frame) => {
+      try { erro?.(JSON.parse(frame.body).erro ?? 'Não foi possível enviar a mensagem.'); }
+      catch { erro?.('Não foi possível enviar a mensagem.'); }
+    });
+    conectado?.();
+  };
+  client.onWebSocketClose = () => { assinaturasPorConversa.clear(); desconectado?.(); };
+  client.onStompError = (frame) => erro?.(frame.headers?.message ?? 'Erro na conexão do chat.');
+  client.onWebSocketError = () => erro?.('Não foi possível conectar ao chat em tempo real.');
   client.activate();
 
   return {
-    aoConectar(callback) {
-      client.onConnect = callback;
-    },
-    aoDesconectar(callback) {
-      client.onDisconnect = callback;
-    },
-    aoErro(callback) {
-      client.onStompError = (frame) => callback(frame.headers?.message ?? 'Erro na conexão do chat.');
-      client.onWebSocketError = () => callback('Não foi possível conectar ao chat em tempo real.');
-    },
+    aoConectar(callback) { conectado = callback; if (client.connected) callback(); },
+    aoDesconectar(callback) { desconectado = callback; },
+    aoErro(callback) { erro = callback; },
     assinarConversa(conversaId, onMensagem) {
-      const assinatura = client.subscribe(`/topic/conversas/${conversaId}`, (frame: IMessage) => {
-        try {
-          const mensagem: MensagemDTO = JSON.parse(frame.body);
-          onMensagem(mensagem);
-        } catch {
-          // corpo inesperado — ignora silenciosamente, o histórico REST cobre o gap
-        }
-      });
-      assinaturasPorConversa.set(conversaId, assinatura);
-
+      conversasDesejadas.set(conversaId, onMensagem);
+      assinar(conversaId, onMensagem);
       return () => {
-        assinatura.unsubscribe();
+        conversasDesejadas.delete(conversaId);
+        assinaturasPorConversa.get(conversaId)?.unsubscribe();
         assinaturasPorConversa.delete(conversaId);
       };
     },
-    enviarMensagem(conversaId, conteudo) {
+    enviarMensagem(conversaId, conteudo, clientMessageId) {
+      if (!client.connected || !assinaturasPorConversa.has(conversaId)) return false;
       client.publish({
         destination: `/app/conversas/${conversaId}/enviar`,
-        body: JSON.stringify({ conteudo }),
+        body: JSON.stringify({ conteudo, clientMessageId }),
       });
+      return true;
     },
     desconectar() {
       assinaturasPorConversa.forEach((assinatura) => assinatura.unsubscribe());
       assinaturasPorConversa.clear();
+      conversasDesejadas.clear();
       client.deactivate();
     },
   };

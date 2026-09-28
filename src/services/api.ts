@@ -5,7 +5,8 @@
 
 import { ApiError, ErroBackend } from '../utils/errosApi';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === 'production' ? `${window.location.origin}/api/v1` : 'http://localhost:8080/api/v1');
 
 function limparSessao(): void {
   localStorage.removeItem('@nhac:token');
@@ -522,12 +523,16 @@ export interface ResumoAvaliacoesDTO {
  * GET /lojista/produtos
  */
 export async function listarProdutos(params?: { page?: number; size?: number }): Promise<ProdutoLojistaDTO[]> {
+  return (await listarProdutosPagina(params)).content ?? [];
+}
+
+export async function listarProdutosPagina(params?: { page?: number; size?: number }): Promise<PaginaSpring<ProdutoLojistaDTO>> {
   const search = new URLSearchParams();
   search.set('size', String(params?.size ?? 100));
   if (params?.page !== undefined) search.set('page', String(params.page));
 
   const pagina = await requisicao<PaginaSpring<ProdutoLojistaDTO>>(`/lojista/produtos?${search.toString()}`);
-  return pagina.content ?? [];
+  return pagina;
 }
 
 /**
@@ -668,13 +673,21 @@ export async function listarPedidos(filtros?: {
   page?: number;
   size?: number;
 }): Promise<PedidoResumoLojistaDTO[]> {
+  return (await listarPedidosPagina(filtros)).content ?? [];
+}
+
+export async function listarPedidosPagina(filtros?: {
+  status?: string;
+  page?: number;
+  size?: number;
+}): Promise<PaginaSpring<PedidoResumoLojistaDTO>> {
   const params = new URLSearchParams();
   params.set('size', String(filtros?.size ?? 100));
   if (filtros?.page !== undefined) params.set('page', String(filtros.page));
   if (filtros?.status) params.set('status', filtros.status);
 
   const pagina = await requisicao<PaginaSpring<PedidoResumoLojistaDTO>>(`/lojista/pedidos?${params.toString()}`);
-  return pagina.content ?? [];
+  return pagina;
 }
 
 /**

@@ -9,7 +9,7 @@ import Toggle from '../../components/ui/Toggle';
 import { CATEGORIAS_PRODUTO } from '../../dados/categorias';
 import { formatarMoeda } from '../../utils/formatacao';
 import { Plus, Search, Edit2 } from 'lucide-react';
-import { listarProdutos, desativarProduto, ativarProduto, ProdutoLojistaDTO } from '../../services/api';
+import { listarProdutosPagina, desativarProduto, ativarProduto, ProdutoLojistaDTO } from '../../services/api';
 import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaListaProdutos.module.css';
@@ -22,6 +22,9 @@ const PaginaListaProdutos = () => {
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [carregandoMais, setCarregandoMais] = useState(false);
 
   useEffect(() => {
     carregarProdutos();
@@ -31,13 +34,31 @@ const PaginaListaProdutos = () => {
     try {
       setCarregando(true);
       setErro(null);
-      const dados = await listarProdutos();
-      setProdutos(dados);
+      const dados = await listarProdutosPagina({ page: 0, size: 50 });
+      setProdutos(dados.content ?? []);
+      setPagina(0);
+      setTotalPaginas(dados.totalPages);
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro ao carregar produtos');
     } finally {
       setCarregando(false);
     }
+  }
+
+  async function carregarMais() {
+    if (carregandoMais || pagina + 1 >= totalPaginas) return;
+    setCarregandoMais(true);
+    try {
+      const dados = await listarProdutosPagina({ page: pagina + 1, size: 50 });
+      setProdutos((atual) => {
+        const ids = new Set(atual.map((p) => p.id));
+        return [...atual, ...(dados.content ?? []).filter((p) => !ids.has(p.id))];
+      });
+      setPagina(dados.number);
+      setTotalPaginas(dados.totalPages);
+    } catch (err) {
+      mostrarToast(tratarErroApi(err).mensagemGeral ?? 'Não foi possível carregar mais produtos.');
+    } finally { setCarregandoMais(false); }
   }
 
   const handleToggleAtivo = async (id: string, novoEstado: boolean) => {
@@ -151,6 +172,11 @@ const PaginaListaProdutos = () => {
                 </Cartao>
               );
             })}
+          </div>
+        )}
+        {pagina + 1 < totalPaginas && (
+          <div style={{ textAlign: 'center', padding: 16 }}>
+            <Botao variante="secundario" onClick={carregarMais} carregando={carregandoMais}>Carregar mais produtos</Botao>
           </div>
         )}
       </div>

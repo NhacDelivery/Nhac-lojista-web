@@ -90,6 +90,10 @@ body {
 }
 
 /* Scrollbar estilizada */
+* {
+  scrollbar-color: var(--nhac-borda) var(--nhac-fundo);
+  scrollbar-width: thin;
+}
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

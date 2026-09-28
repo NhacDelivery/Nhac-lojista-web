@@ -31,6 +31,15 @@ const PaginaEnderecoLoja = () => {
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const latPreview = Number(latitude.replace(',', '.'));
+  const lngPreview = Number(longitude.replace(',', '.'));
+  const posicaoValida = latitude.trim() && longitude.trim() &&
+    Number.isFinite(latPreview) && Number.isFinite(lngPreview) &&
+    Math.abs(latPreview) <= 90 && Math.abs(lngPreview) <= 180 &&
+    (latPreview !== 0 || lngPreview !== 0);
+  const mapaUrl = posicaoValida
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${lngPreview - 0.005}%2C${latPreview - 0.005}%2C${lngPreview + 0.005}%2C${latPreview + 0.005}&layer=mapnik&marker=${latPreview}%2C${lngPreview}`
+    : null;
 
   // Preenche o formulário com o endereço REAL da loja (GET /lojas/minha-loja).
   useEffect(() => {
@@ -131,7 +140,14 @@ const PaginaEnderecoLoja = () => {
           estado: uf,
         },
       });
-      await atualizarLocalizacaoLoja(id, lat, lng);
+      try {
+        await atualizarLocalizacaoLoja(id, lat, lng);
+      } catch (err) {
+        await recarregar();
+        const tratado = tratarErroApi(err);
+        setErroGeral(`O endereço foi salvo, mas a posição não foi atualizada. ${tratado.mensagemGeral ?? 'Confira as coordenadas e tente salvar novamente.'}`);
+        return;
+      }
       await recarregar();
       mostrarToast('Endereço salvo com sucesso!');
       navigate('/configuracoes');
@@ -172,6 +188,13 @@ const PaginaEnderecoLoja = () => {
               <InputTexto rotulo="Latitude da loja" valor={latitude} aoMudar={setLatitude} erro={erros.latitude} obrigatorio />
               <InputTexto rotulo="Longitude da loja" valor={longitude} aoMudar={setLongitude} erro={erros.longitude} obrigatorio />
             </div>
+            {mapaUrl && (
+              <div>
+                <p>Confira se o marcador está na entrada da sua loja antes de salvar.</p>
+                <iframe title="Prévia da posição da loja" src={mapaUrl} loading="lazy"
+                  style={{ width: '100%', height: 280, border: '1px solid var(--nhac-borda)', borderRadius: 12 }} />
+              </div>
+            )}
 
             <div className={estilos.grid2}>
               <InputTexto rotulo="Complemento" valor={complemento} aoMudar={setComplemento} />

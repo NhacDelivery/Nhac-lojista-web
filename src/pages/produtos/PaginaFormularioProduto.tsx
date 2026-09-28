@@ -8,7 +8,7 @@ import Cartao from '../../components/ui/Cartao';
 import Toggle from '../../components/ui/Toggle';
 import ModalConfirmacao from '../../components/ui/ModalConfirmacao';
 import { CATEGORIAS_PRODUTO } from '../../dados/categorias';
-import { Upload, Trash2, Plus } from 'lucide-react';
+import { Upload, Trash2 } from 'lucide-react';
 import {
   buscarProduto,
   criarProduto,
@@ -27,7 +27,6 @@ import {
   validarFormulario,
   parsePreco,
   limparTexto,
-  validarEstoque,
   validarArquivoImagem,
 } from '../../validators';
 import { tratarErroApi } from '../../utils/errosApi';
@@ -173,12 +172,13 @@ const PaginaFormularioProduto = () => {
         categoriaMenu: limparTexto(categoria),
         imagemUrl: fotoUrl || undefined,
         ativo,
-        adicionais: adicionais.length > 0 ? adicionais : undefined,
+        // Na edição, preserve grupos existentes até existir fluxo completo de itens.
+        adicionais: ehEdicao && adicionais.length > 0 ? adicionais : undefined,
         // Campos sem input nesta tela: reenviados como vieram do backend para
         // o PUT não zerá-los (o DTO aceita `peso` string e estoque absoluto).
         peso: peso || undefined,
         percentualDesconto: percentualDesconto ? Number(percentualDesconto) : undefined,
-        estoque: estoque !== '' ? Number(estoque) : undefined,
+        estoque: ehEdicao && estoque !== '' ? Number(estoque) : undefined,
       };
 
       if (ehEdicao && id) {
@@ -211,7 +211,7 @@ const PaginaFormularioProduto = () => {
 
   return (
     <LayoutPagina titulo={ehEdicao ? 'Editar Produto' : 'Novo Produto'}>
-      <form onSubmit={handleSalvar} className={estilos.form}>
+      <form onSubmit={handleSalvar} className={estilos.form} noValidate>
         {carregando && <p className={estilos.status}>Carregando produto...</p>}
         {erro && <p className={estilos.erro} role="alert">{erro}</p>}
         <div className={estilos.container}>
@@ -279,53 +279,9 @@ const PaginaFormularioProduto = () => {
                 <Toggle ativo={ativo} aoMudar={setAtivo} rotulo="Produto Ativo" />
               </div>
 
-              <InputTexto
-                rotulo="Estoque (unidades)"
-                valor={estoque}
-                aoMudar={(v) => setEstoque(v.replace(/\D/g, ''))}
-                placeholder="Ex.: 100"
-                erro={erroCampo('estoque')}
-                onBlur={() => tocarCampo('estoque', estoque, validarEstoque)}
-              />
             </div>
           </Cartao>
 
-          <Cartao className={estilos.secao}>
-            <div className={estilos.cabecalhoSecao}>
-              <h3 className={estilos.tituloSecao}>Adicionais</h3>
-              <Botao type="button" variante="secundario" icone={<Plus size={16} />} onClick={() => setAdicionais([...adicionais, { nome: '', obrigatorio: false, itens: [] }])}>
-                Novo Grupo
-              </Botao>
-            </div>
-            
-            {adicionais.length === 0 ? (
-              <p className={estilos.vazio}>Nenhum grupo de adicional configurado.</p>
-            ) : (
-              <div className={estilos.listaAdicionais}>
-                {adicionais.map((grupo, idx) => (
-                  <div key={idx} className={estilos.grupoAdicional}>
-                    <div className={estilos.linhaGrupo}>
-                      <InputTexto rotulo="" valor={grupo.nome} aoMudar={(v) => {
-                        const novos = [...adicionais];
-                        novos[idx].nome = v;
-                        setAdicionais(novos);
-                      }} placeholder="Nome do grupo (ex: Escolha seu molho)" />
-                      <Toggle ativo={grupo.obrigatorio} aoMudar={(v) => {
-                        const novos = [...adicionais];
-                        novos[idx].obrigatorio = v;
-                        setAdicionais(novos);
-                      }} rotulo="Obrigatório" />
-                      <Botao type="button" variante="perigo" icone={<Trash2 size={16} />} onClick={() => {
-                        const novos = [...adicionais];
-                        novos.splice(idx, 1);
-                        setAdicionais(novos);
-                      }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Cartao>
         </div>
 
         <div className={estilos.acoes}>
