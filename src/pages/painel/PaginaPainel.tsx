@@ -95,7 +95,7 @@ const PaginaPainel = () => {
       <LayoutPagina titulo="Painel">
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--nhac-texto-claro)' }}>
           <p>{erro ?? 'Não foi possível carregar o painel.'}</p>
-          <Botao variante="secundario" onClick={carregarPainel}>Tentar novamente</Botao>
+          <Botao variante="secundario" onClick={() => void carregarPainel()}>Tentar novamente</Botao>
         </div>
       </LayoutPagina>
     );
