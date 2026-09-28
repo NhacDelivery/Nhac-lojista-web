@@ -4,6 +4,19 @@
   gap: 24px;
 }
 
+.avisoLocalizacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e0a900;
+  border-radius: 10px;
+  background: #fff9db;
+  color: #533b00;
+}
+
 /* Faixa full-bleed: a placa ABERTO/FECHADO do quadro de partidas */
 .faixaPlaca {
   display: flex;

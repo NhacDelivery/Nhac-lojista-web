@@ -7,7 +7,10 @@ on:
       - 'e2e/**'
       - 'src/pages/autenticacao/**'
       - 'src/pages/pedidos/**'
+      - 'src/pages/chat/**'
+      - 'src/pages/configuracoes/PaginaEnderecoLoja.tsx'
       - 'src/services/api.ts'
+      - 'src/services/chatSocket.ts'
       - 'src/services/pedidoStatusSocket.ts'
       - 'src/validators/statusPedido.ts'
       - 'playwright.config.ts'
@@ -52,7 +55,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: NhacDelivery/backend-nhac
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: main
           path: backend-nhac
 
       - name: Setup Java 25

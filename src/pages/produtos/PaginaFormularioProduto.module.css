@@ -124,7 +124,18 @@
   gap: 16px;
 }
 
+.linhaItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 170px) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.linhaItem > :last-child:not(:first-child) { align-self: center; }
+
 @media (max-width: 480px) {
+  .linhaItem { grid-template-columns: minmax(0, 1fr) auto; }
+  .linhaItem > :first-child { grid-column: 1 / -1; }
   .linhaGrupo {
     flex-wrap: wrap;
   }
@@ -140,4 +151,3 @@
     width: 100%;
   }
 }
-
