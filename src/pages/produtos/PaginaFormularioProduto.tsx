@@ -27,6 +27,7 @@ import {
   validarFormulario,
   parsePreco,
   limparTexto,
+  validarEstoque,
   validarArquivoImagem,
 } from '../../validators';
 import { tratarErroApi } from '../../utils/errosApi';
@@ -45,9 +46,7 @@ const PaginaFormularioProduto = () => {
   const [ativo, setAtivo] = useState(true);
   const [fotoUrl, setFotoUrl] = useState('');
   const [adicionais, setAdicionais] = useState<GrupoAdicionalDTO[]>([]);
-  // Campos que não têm input nesta tela, mas fazem parte do ProdutoLojistaDTO.
-  // Precisam ser preservados no PUT — se ficassem de fora do payload, o
-  // backend sobrescreveria peso/desconto/estoque com null.
+  // Campos preservados no PUT para não sobrescrever valores existentes.
   const [peso, setPeso] = useState<string>('');
   const [percentualDesconto, setPercentualDesconto] = useState<string>('');
   const [estoque, setEstoque] = useState<string>('');
@@ -174,8 +173,7 @@ const PaginaFormularioProduto = () => {
         ativo,
         // Na edição, preserve grupos existentes até existir fluxo completo de itens.
         adicionais: ehEdicao && adicionais.length > 0 ? adicionais : undefined,
-        // Campos sem input nesta tela: reenviados como vieram do backend para
-        // o PUT não zerá-los (o DTO aceita `peso` string e estoque absoluto).
+        // Preserve peso e desconto; estoque é editável apenas para produtos existentes.
         peso: peso || undefined,
         percentualDesconto: percentualDesconto ? Number(percentualDesconto) : undefined,
         estoque: ehEdicao && estoque !== '' ? Number(estoque) : undefined,
@@ -278,6 +276,17 @@ const PaginaFormularioProduto = () => {
               <div className={estilos.toggleWrapper}>
                 <Toggle ativo={ativo} aoMudar={setAtivo} rotulo="Produto Ativo" />
               </div>
+
+              {ehEdicao && (
+                <InputTexto
+                  rotulo="Estoque (unidades)"
+                  valor={estoque}
+                  aoMudar={(v) => setEstoque(v.replace(/\D/g, ''))}
+                  placeholder="Ex.: 100"
+                  erro={erroCampo('estoque')}
+                  onBlur={() => tocarCampo('estoque', estoque, validarEstoque)}
+                />
+              )}
 
             </div>
           </Cartao>
