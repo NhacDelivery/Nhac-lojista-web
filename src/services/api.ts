@@ -558,10 +558,11 @@ export async function criarProduto(dados: ProdutoLojistaDTO): Promise<{ id: stri
  * Atualiza um produto existente
  * PUT /produtos/{id}
  */
-export async function atualizarProduto(id: string, dados: Partial<ProdutoLojistaDTO>): Promise<void> {
+export async function atualizarProduto(id: string, dados: ProdutoLojistaDTO): Promise<void> {
+  const { ativo, id: _id, ...campos } = dados;
   return requisicao<void>(`/produtos/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(dados),
+    body: JSON.stringify({ ...campos, isAtivo: ativo }),
   });
 }
 
