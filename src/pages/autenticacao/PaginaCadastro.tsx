@@ -376,7 +376,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
 
     return {
       nome: nomeLoja,
-      imagemUrl: imagemUrl || 'https://via.placeholder.com/150',
+      imagemUrl,
       descricao: descricaoLoja || '',
       categoria: categoriaLoja,
       isAberto: true,
@@ -423,6 +423,11 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     setCarregando(true);
     setErros({});
     try {
+      if (!logoArquivo && !fotoUrl) {
+        setErros({ imagemUrl: 'Selecione a logo da loja antes de finalizar.' });
+        setEtapaAtual(indices.LOJA);
+        return;
+      }
       if (modo === 'completo' && !contaCriada) {
         if (!emailEstaVerificado(email)) {
           setEtapaAtual(indices.VERIFICACAO);

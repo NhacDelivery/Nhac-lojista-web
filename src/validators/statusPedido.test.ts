@@ -1,4 +1,5 @@
 import {
+  podeCancelar,
   podeTransicionarComoLojista,
   proximoStatusPermitidoParaLojista,
 } from './statusPedido';
@@ -14,5 +15,11 @@ describe('transições do lojista', () => {
     expect(proximoStatusPermitidoParaLojista('SAIU_ENTREGA')).toBeNull();
     expect(podeTransicionarComoLojista('PREPARANDO', 'SAIU_ENTREGA')).toBe(false);
     expect(podeTransicionarComoLojista('SAIU_ENTREGA', 'ENTREGUE')).toBe(false);
+  });
+
+  it('bloqueia cancelamento depois do pagamento enquanto não há estorno', () => {
+    expect(podeCancelar('PENDENTE')).toBe(true);
+    expect(podeCancelar('PAGO')).toBe(false);
+    expect(podeCancelar('PREPARANDO')).toBe(false);
   });
 });

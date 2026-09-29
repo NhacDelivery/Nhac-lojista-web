@@ -8,7 +8,6 @@ import { formatarMoeda, formatarHora, STATUS_PEDIDO_INFO } from '../../utils/for
 import { Bell, ChevronRight } from 'lucide-react';
 import Botao from '../../components/ui/Botao';
 import { listarPedidosPagina, PedidoResumoLojistaDTO } from '../../services/api';
-import { useToast } from '../../contexts/ToastContext';
 import estilos from './PaginaListaPedidos.module.css';
 
 interface FiltroTag {
@@ -27,7 +26,6 @@ const FILTROS: FiltroTag[] = [
 
 const PaginaListaPedidos = () => {
   const navigate = useNavigate();
-  const { mostrarToast } = useToast();
   const [filtro, setFiltro] = useState<FiltroTag['valor']>('todos');
   const [pedidos, setPedidos] = useState<PedidoResumoLojistaDTO[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -84,12 +82,13 @@ const PaginaListaPedidos = () => {
     } finally {
       if (!silencioso && requisicao === requisicaoAtual.current) setCarregando(false);
     }
-  }, [mostrarToast, filtro, pagina]);
+  }, [filtro, pagina]);
 
   useEffect(() => {
     void carregarPedidos();
     const intervalo = window.setInterval(() => void carregarPedidos(true), 10000);
-    return () => { window.clearInterval(intervalo); requisicaoAtual.current++; };
+    const contador = requisicaoAtual;
+    return () => { window.clearInterval(intervalo); contador.current++; };
   }, [carregarPedidos]);
 
   const contagemPorFiltro = (valor: FiltroTag['valor']) =>

@@ -59,6 +59,10 @@ const PaginaEditarInfoLoja = () => {
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviandoFoto) {
+      setErro('Aguarde o envio da imagem antes de salvar.');
+      return;
+    }
     if (!loja?.id) return;
 
     setSalvando(true);
@@ -92,7 +96,7 @@ const PaginaEditarInfoLoja = () => {
 
   return (
     <LayoutPagina titulo="Editar informações">
-      <form onSubmit={handleSalvar} className={estilos.form} noValidate>
+      <form onSubmit={handleSalvar} noValidate className={estilos.form}>
         {erro && (
           <div style={{ color: 'var(--nhac-erro, #e53935)', marginBottom: '1rem', fontSize: '0.875rem' }}>
             {erro}
@@ -150,7 +154,7 @@ const PaginaEditarInfoLoja = () => {
 
         <div className={estilos.acoes}>
           <Botao type="button" variante="fantasma" onClick={() => navigate('/configuracoes')}>Cancelar</Botao>
-          <Botao type="submit" variante="primario" carregando={salvando}>Salvar</Botao>
+          <Botao type="submit" variante="primario" carregando={salvando} disabled={enviandoFoto}>Salvar</Botao>
         </div>
       </form>
     </LayoutPagina>

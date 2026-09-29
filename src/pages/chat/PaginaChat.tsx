@@ -23,6 +23,7 @@ const MENSAGENS_PRE_PRONTAS = [
   'Infelizmente não temos esse item disponível',
   'Obrigado pela preferência! ⭐',
 ];
+type Pendente = { id: string; texto: string; incerto: boolean };
 
 const PaginaChat = () => {
   const { mostrarToast } = useToast();
@@ -32,92 +33,108 @@ const PaginaChat = () => {
   const [novaMensagem, setNovaMensagem] = useState('');
   const [carregandoConversas, setCarregandoConversas] = useState(true);
   const [carregandoMensagens, setCarregandoMensagens] = useState(false);
-  const [pendenteId, setPendenteId] = useState<string | null>(null);
-  const [envioIncerto, setEnvioIncerto] = useState(false);
+  const [pendentes, setPendentes] = useState<Record<string, Pendente>>({});
 
   const socketRef = useRef<ChatSocket | null>(null);
   const desinscreverRef = useRef<(() => void) | null>(null);
-  const conversaAtivaRef = useRef<string | null>(null);
-  const pendenteRef = useRef<string | null>(null);
-  const prazoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ativaRef = useRef<string | null>(null);
+  const pendentesRef = useRef<Record<string, Pendente>>({});
+  const prazosRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const rascunhosRef = useRef<Record<string, string>>({});
+
+  const atualizarPendentes = (valor: Record<string, Pendente>) => {
+    pendentesRef.current = valor;
+    setPendentes(valor);
+  };
+  const confirmar = (mensagem: MensagemDTO) => {
+    const pendente = pendentesRef.current[mensagem.conversaId];
+    if (pendente && mensagem.id === `msg_${pendente.id}`) {
+      clearTimeout(prazosRef.current[mensagem.conversaId]);
+      delete prazosRef.current[mensagem.conversaId];
+      const novos = { ...pendentesRef.current };
+      delete novos[mensagem.conversaId];
+      atualizarPendentes(novos);
+      delete rascunhosRef.current[mensagem.conversaId];
+      if (ativaRef.current === mensagem.conversaId) setNovaMensagem('');
+    }
+  };
 
   const conversaAtiva = conversas.find((c) => c.id === conversaAtivaId) ?? null;
 
-  const carregarConversas = useCallback(async (silencioso = false) => {
+  const carregarConversas = useCallback(async () => {
     try {
-      if (!silencioso) setCarregandoConversas(true);
+      setCarregandoConversas(true);
       const dados = await listarConversas();
       setConversas(dados);
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(tratado.mensagemGeral ?? 'Não foi possível carregar as conversas.');
     } finally {
-      if (!silencioso) setCarregandoConversas(false);
+      setCarregandoConversas(false);
     }
   }, [mostrarToast]);
 
   useEffect(() => {
+    const prazos = prazosRef.current;
     const socket = conectarChatSocket();
-    socket.aoErro((mensagem) => mostrarToast(mensagem));
     socket.aoConectar(() => {
-      void carregarConversas(true);
-      if (conversaAtivaRef.current) void recuperarMensagens(conversaAtivaRef.current);
+      const id = ativaRef.current;
+      if (id) listarMensagens(id).then((historico) => {
+        if (ativaRef.current !== id) return;
+        setMensagens((atual) => {
+          const porId = new Map([...atual, ...historico].map((m) => [m.id, m]));
+          return [...porId.values()].sort((a, b) => a.enviadaEm.localeCompare(b.enviadaEm));
+        });
+        historico.forEach(confirmar);
+      }).catch(() => { /* a tela mantém o histórico já carregado */ });
+    });
+    socket.aoErro((mensagem) => {
+      const id = ativaRef.current;
+      if (id && pendentesRef.current[id]) atualizarPendentes({
+        ...pendentesRef.current, [id]: { ...pendentesRef.current[id], incerto: true },
+      });
+      mostrarToast(mensagem);
     });
     socketRef.current = socket;
 
     carregarConversas();
-    const intervalo = window.setInterval(() => void carregarConversas(true), 10000);
 
     return () => {
       desinscreverRef.current?.();
-      window.clearInterval(intervalo);
-      if (prazoRef.current) clearTimeout(prazoRef.current);
+      Object.values(prazos).forEach(clearTimeout);
       socket.desconectar();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const recuperarMensagens = async (id: string) => {
-    try {
-      const historico = await listarMensagens(id);
-      if (conversaAtivaRef.current !== id) return;
-      setMensagens((atual) => {
-        const porId = new Map(atual.map((m) => [m.id, m]));
-        historico.forEach((m) => porId.set(m.id, m));
-        return [...porId.values()].sort((a, b) => a.enviadaEm.localeCompare(b.enviadaEm));
-      });
-      if (pendenteRef.current && historico.some((m) => m.id === `msg_${pendenteRef.current}`)) confirmarEnvio();
-    } catch { /* A lista já carregada permanece visível. */ }
-  };
-
-  const confirmarEnvio = () => {
-    if (prazoRef.current) clearTimeout(prazoRef.current);
-    pendenteRef.current = null;
-    setPendenteId(null);
-    setEnvioIncerto(false);
-    setNovaMensagem('');
-  };
-
   const handleSelecionarConversa = async (id: string) => {
     desinscreverRef.current?.();
-    conversaAtivaRef.current = id;
+    ativaRef.current = id;
     setConversaAtivaId(id);
     setMensagens([]);
+    setNovaMensagem(pendentesRef.current[id]?.texto ?? rascunhosRef.current[id] ?? '');
+    desinscreverRef.current = socketRef.current?.assinarConversa(id, (mensagem) => {
+      confirmar(mensagem);
+      setMensagens((atual) => atual.some((m) => m.id === mensagem.id) ? atual : [...atual, mensagem]);
+      setConversas((atual) => atual.map((c) => c.id === mensagem.conversaId
+        ? { ...c, ultimaMensagemPreview: mensagem.conteudo, ultimaMensagemEm: mensagem.enviadaEm }
+        : c));
+    }) ?? null;
 
     try {
       setCarregandoMensagens(true);
       const historico = await listarMensagens(id);
-      // backend devolve mais recente primeiro — inverte pra renderizar antiga -> nova
-      if (conversaAtivaRef.current === id) setMensagens((atual) => {
-        const porId = new Map(atual.map((m) => [m.id, m]));
-        historico.forEach((m) => porId.set(m.id, m));
+      if (ativaRef.current !== id) return;
+      setMensagens((atual) => {
+        const porId = new Map([...atual, ...historico].map((m) => [m.id, m]));
         return [...porId.values()].sort((a, b) => a.enviadaEm.localeCompare(b.enviadaEm));
       });
+      historico.forEach(confirmar);
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(tratado.mensagemGeral ?? 'Não foi possível carregar o histórico.');
     } finally {
-      setCarregandoMensagens(false);
+      if (ativaRef.current === id) setCarregandoMensagens(false);
     }
 
     marcarConversaComoLida(id).catch(() => {
@@ -125,43 +142,33 @@ const PaginaChat = () => {
     });
     setConversas((atual) => atual.map((c) => (c.id === id ? { ...c, naoLidas: 0 } : c)));
 
-    if (socketRef.current) {
-      desinscreverRef.current = socketRef.current.assinarConversa(id, (mensagem) => {
-        if (conversaAtivaRef.current !== id) return;
-        setMensagens((atual) => atual.some((m) => m.id === mensagem.id) ? atual : [...atual, mensagem]);
-        if (pendenteRef.current && mensagem.id === `msg_${pendenteRef.current}`) confirmarEnvio();
-        setConversas((atual) =>
-          atual.map((c) =>
-            c.id === mensagem.conversaId
-              ? { ...c, ultimaMensagemPreview: mensagem.conteudo, ultimaMensagemEm: mensagem.enviadaEm }
-              : c
-          )
-        );
-      });
-    }
   };
 
   const handleEnviar = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!novaMensagem.trim() || !conversaAtiva || !socketRef.current || (pendenteId && !envioIncerto)) return;
-
-    // Não adiciona a mensagem localmente aqui — o backend faz o broadcast de
-    // volta pro remetente também (a assinatura em /topic/conversas/{id} já
-    // está ativa pra essa conversa), então ela chega pelo mesmo caminho que
-    // a mensagem do cliente chegaria.
-    const id = pendenteRef.current ?? crypto.randomUUID();
-    if (!socketRef.current.enviarMensagem(conversaAtiva.id, novaMensagem.trim(), id)) {
-      mostrarToast('Chat desconectado. Aguarde a reconexão e tente novamente.');
+    if (!novaMensagem.trim() || !conversaAtiva || !socketRef.current) return;
+    const id = conversaAtiva.id;
+    const pendente = pendentesRef.current[id];
+    if (pendente && !pendente.incerto) return;
+    const texto = pendente?.texto ?? novaMensagem.trim();
+    const identificador = pendente?.id ?? crypto.randomUUID();
+    if (!socketRef.current.enviarMensagem(id, texto, identificador)) {
+      mostrarToast('Sem conexão com o chat. Tente novamente quando conectar.');
       return;
     }
-    pendenteRef.current = id;
-    setPendenteId(id);
-    setEnvioIncerto(false);
-    if (prazoRef.current) clearTimeout(prazoRef.current);
-    prazoRef.current = setTimeout(() => setEnvioIncerto(true), 15000);
+    atualizarPendentes({ ...pendentesRef.current, [id]: { id: identificador, texto, incerto: false } });
+    clearTimeout(prazosRef.current[id]);
+    prazosRef.current[id] = setTimeout(() => {
+      const atual = pendentesRef.current[id];
+      if (atual?.id === identificador) atualizarPendentes({
+        ...pendentesRef.current, [id]: { ...atual, incerto: true },
+      });
+    }, 15000);
   };
 
   const usarMensagemRapida = (texto: string) => {
+    if (conversaAtivaId && pendentesRef.current[conversaAtivaId]) return;
+    if (conversaAtivaId) rascunhosRef.current[conversaAtivaId] = texto;
     setNovaMensagem(texto);
   };
 
@@ -175,10 +182,11 @@ const PaginaChat = () => {
             <p style={{ padding: '1rem', color: 'var(--nhac-texto-claro)' }}>Nenhuma conversa ainda.</p>
           ) : (
             conversas.map((conversa) => (
-              <div
+              <button type="button"
                 key={conversa.id}
                 className={`${estilos.itemConversa} ${conversaAtivaId === conversa.id ? estilos.ativo : ''}`}
                 onClick={() => handleSelecionarConversa(conversa.id)}
+                aria-current={conversaAtivaId === conversa.id ? 'true' : undefined}
               >
                 <Avatar nome={conversa.clienteNome} tamanho="medio" />
                 <div className={estilos.infoConversa}>
@@ -191,7 +199,7 @@ const PaginaChat = () => {
                   </div>
                 </div>
                 {conversa.naoLidas > 0 && <div className={estilos.badge}>{conversa.naoLidas}</div>}
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -200,7 +208,8 @@ const PaginaChat = () => {
           {conversaAtiva ? (
             <>
               <header className={estilos.cabecalhoChat}>
-                <button className={estilos.voltarMobile} onClick={() => { conversaAtivaRef.current = null; setConversaAtivaId(null); }}>
+                <button type="button" aria-label="Voltar às conversas" className={estilos.voltarMobile}
+                  onClick={() => setConversaAtivaId(null)}>
                   <ArrowLeft size={24} />
                 </button>
                 <Avatar nome={conversaAtiva.clienteNome} tamanho="pequeno" />
@@ -230,23 +239,35 @@ const PaginaChat = () => {
               <div className={estilos.areaEnvio}>
                 <div className={estilos.mensagensRapidas}>
                   {MENSAGENS_PRE_PRONTAS.map((msg, idx) => (
-                    <button key={idx} className={estilos.btnMensagemRapida} onClick={() => usarMensagemRapida(msg)}>
+                    <button key={idx} className={estilos.btnMensagemRapida} onClick={() => usarMensagemRapida(msg)}
+                      disabled={!!pendentes[conversaAtiva.id]}>
                       {msg}
                     </button>
                   ))}
                 </div>
-                <form className={estilos.formEnvio} onSubmit={handleEnviar} noValidate>
+                <form noValidate className={estilos.formEnvio} onSubmit={handleEnviar}>
                   <input
                     type="text"
                     className={estilos.inputMensagem}
                     value={novaMensagem}
-                    onChange={(e) => setNovaMensagem(e.target.value)}
-                    disabled={!!pendenteId}
+                    onChange={(e) => {
+                      rascunhosRef.current[conversaAtiva.id] = e.target.value;
+                      setNovaMensagem(e.target.value);
+                    }}
+                    disabled={!!pendentes[conversaAtiva.id]}
+                    maxLength={4000}
                     placeholder="Digite sua mensagem..."
                   />
-                  <Botao type="submit" icone={<Send size={20} />} disabled={!novaMensagem.trim() || (!!pendenteId && !envioIncerto)} />
+                  <Botao type="submit" icone={<Send size={20} />}
+                    disabled={!novaMensagem.trim() || (!!pendentes[conversaAtiva.id] && !pendentes[conversaAtiva.id].incerto)}>
+                    {pendentes[conversaAtiva.id]?.incerto ? 'Reenviar' : 'Enviar'}
+                  </Botao>
                 </form>
-                {pendenteId && <p role="status">{envioIncerto ? 'Sem confirmação. Confira o histórico ou toque em enviar para tentar novamente.' : 'Aguardando confirmação da mensagem...'}</p>}
+                {pendentes[conversaAtiva.id] && <p role="status" className={estilos.estadoEnvio}>
+                  {pendentes[conversaAtiva.id].incerto
+                    ? 'Sem confirmação. Confira a conversa ou reenvie a mesma mensagem.'
+                    : 'Aguardando confirmação da mensagem...'}
+                </p>}
               </div>
             </>
           ) : (

@@ -8,7 +8,7 @@ import Cartao from '../../components/ui/Cartao';
 import Toggle from '../../components/ui/Toggle';
 import ModalConfirmacao from '../../components/ui/ModalConfirmacao';
 import { CATEGORIAS_PRODUTO } from '../../dados/categorias';
-import { Upload, Trash2 } from 'lucide-react';
+import { Upload, Trash2, Plus } from 'lucide-react';
 import {
   buscarProduto,
   criarProduto,
@@ -46,7 +46,9 @@ const PaginaFormularioProduto = () => {
   const [ativo, setAtivo] = useState(true);
   const [fotoUrl, setFotoUrl] = useState('');
   const [adicionais, setAdicionais] = useState<GrupoAdicionalDTO[]>([]);
-  // Campos preservados no PUT para não sobrescrever valores existentes.
+  // Campos que não têm input nesta tela, mas fazem parte do ProdutoLojistaDTO.
+  // Precisam ser preservados no PUT — se ficassem de fora do payload, o
+  // backend sobrescreveria peso/desconto/estoque com null.
   const [peso, setPeso] = useState<string>('');
   const [percentualDesconto, setPercentualDesconto] = useState<string>('');
   const [estoque, setEstoque] = useState<string>('');
@@ -84,6 +86,19 @@ const PaginaFormularioProduto = () => {
         categoria: validarCategoria,
       }
     );
+    adicionais.forEach((grupo, indice) => {
+      if (!grupo.nome.trim()) novosErros[`grupo-${indice}`] = 'Informe o nome do grupo.';
+      if (grupo.itens.length === 0) novosErros[`itens-${indice}`] = 'Adicione ao menos uma opção.';
+      if (grupo.obrigatorio && (grupo.minimo ?? 0) < 1) novosErros[`minimo-${indice}`] = 'Grupo obrigatório exige ao menos uma escolha.';
+      if ((grupo.maximo ?? 1) < (grupo.minimo ?? 0) || (grupo.maximo ?? 1) > grupo.itens.length) {
+        novosErros[`maximo-${indice}`] = 'O máximo deve ficar entre o mínimo e o número de opções.';
+      }
+      grupo.itens.forEach((item, itemIndice) => {
+        if (!item.nome.trim() || !Number.isFinite(item.preco) || item.preco < 0) {
+          novosErros[`item-${indice}-${itemIndice}`] = 'Informe o nome e um preço válido.';
+        }
+      });
+    });
     setErros(novosErros);
     setErrosTocados({ nome: true, descricao: true, preco: true, categoria: true });
     return Object.keys(novosErros).length === 0;
@@ -158,6 +173,10 @@ const PaginaFormularioProduto = () => {
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviandoImagem) {
+      setErro('Aguarde o envio da imagem antes de salvar.');
+      return;
+    }
     setErro(null);
     if (!validarTudo()) return;
 
@@ -171,9 +190,9 @@ const PaginaFormularioProduto = () => {
         categoriaMenu: limparTexto(categoria),
         imagemUrl: fotoUrl || undefined,
         ativo,
-        // Na edição, preserve grupos existentes até existir fluxo completo de itens.
-        adicionais: ehEdicao && adicionais.length > 0 ? adicionais : undefined,
-        // Preserve peso e desconto; estoque é editável apenas para produtos existentes.
+        adicionais,
+        // Campos sem input nesta tela: reenviados como vieram do backend para
+        // o PUT não zerá-los (o DTO aceita `peso` string e estoque absoluto).
         peso: peso || undefined,
         percentualDesconto: percentualDesconto ? Number(percentualDesconto) : undefined,
         estoque: ehEdicao && estoque !== '' ? Number(estoque) : undefined,
@@ -209,7 +228,7 @@ const PaginaFormularioProduto = () => {
 
   return (
     <LayoutPagina titulo={ehEdicao ? 'Editar Produto' : 'Novo Produto'}>
-      <form onSubmit={handleSalvar} className={estilos.form} noValidate>
+      <form onSubmit={handleSalvar} noValidate className={estilos.form}>
         {carregando && <p className={estilos.status}>Carregando produto...</p>}
         {erro && <p className={estilos.erro} role="alert">{erro}</p>}
         <div className={estilos.container}>
@@ -287,10 +306,54 @@ const PaginaFormularioProduto = () => {
                   onBlur={() => tocarCampo('estoque', estoque, validarEstoque)}
                 />
               )}
-
             </div>
           </Cartao>
 
+          <Cartao className={estilos.secao}>
+            <div className={estilos.cabecalhoSecao}>
+              <h3 className={estilos.tituloSecao}>Adicionais</h3>
+                <Botao type="button" variante="secundario" icone={<Plus size={16} />} onClick={() => setAdicionais([...adicionais, { nome: '', obrigatorio: false, minimo: 0, maximo: 1, itens: [] }])}>
+                Novo Grupo
+              </Botao>
+            </div>
+            
+            {adicionais.length === 0 ? (
+              <p className={estilos.vazio}>Nenhum grupo de adicional configurado.</p>
+            ) : (
+              <div className={estilos.listaAdicionais}>
+                {adicionais.map((grupo, idx) => (
+                  <div key={idx} className={estilos.grupoAdicional}>
+                    <div className={estilos.linhaGrupo}>
+                      <InputTexto rotulo="Nome do grupo" valor={grupo.nome} erro={erros[`grupo-${idx}`]} aoMudar={(v) => {
+                        setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, nome: v } : g));
+                      }} placeholder="Ex.: Escolha seu molho" />
+                      <Toggle ativo={grupo.obrigatorio} aoMudar={(v) => {
+                        setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, obrigatorio: v, minimo: v ? 1 : 0 } : g));
+                      }} rotulo="Obrigatório" />
+                      <Botao type="button" variante="perigo" icone={<Trash2 size={16} />} aria-label={`Remover grupo ${grupo.nome || idx + 1}`} onClick={() => {
+                        const novos = [...adicionais];
+                        novos.splice(idx, 1);
+                        setAdicionais(novos);
+                      }} />
+                    </div>
+                    <div className={estilos.linhaItem}>
+                      <InputTexto rotulo="Mínimo" type="number" min={grupo.obrigatorio ? 1 : 0} max={grupo.itens.length} valor={String(grupo.minimo ?? 0)} erro={erros[`minimo-${idx}`]} aoMudar={v => setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, minimo: Number(v) } : g))} />
+                      <InputTexto rotulo="Máximo" type="number" min={1} max={grupo.itens.length} valor={String(grupo.maximo ?? 1)} erro={erros[`maximo-${idx}`]} aoMudar={v => setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, maximo: Number(v) } : g))} />
+                    </div>
+                    {grupo.itens.map((item, itemIdx) => (
+                      <div className={estilos.linhaItem} key={itemIdx}>
+                        <InputTexto rotulo="Opção" valor={item.nome} erro={erros[`item-${idx}-${itemIdx}`]} aoMudar={v => setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, itens: g.itens.map((it, j) => j === itemIdx ? { ...it, nome: v } : it) } : g))} />
+                        <InputTexto rotulo="Preço adicional (R$)" type="number" min={0} step="0.01" valor={String(item.preco)} aoMudar={v => setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, itens: g.itens.map((it, j) => j === itemIdx ? { ...it, preco: Number(v) } : it) } : g))} />
+                        <Botao type="button" variante="perigo" icone={<Trash2 size={16} />} aria-label={`Remover opção ${item.nome || itemIdx + 1}`} onClick={() => setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, itens: g.itens.filter((_, j) => j !== itemIdx) } : g))} />
+                      </div>
+                    ))}
+                    {erros[`itens-${idx}`] && <p className={estilos.erro}>{erros[`itens-${idx}`]}</p>}
+                    <Botao type="button" variante="secundario" icone={<Plus size={16} />} onClick={() => setAdicionais(prev => prev.map((g, i) => i === idx ? { ...g, itens: [...g.itens, { nome: '', preco: 0 }] } : g))}>Adicionar opção</Botao>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Cartao>
         </div>
 
         <div className={estilos.acoes}>
@@ -306,7 +369,7 @@ const PaginaFormularioProduto = () => {
           )}
           <div className={estilos.acoesDir}>
             <Botao type="button" variante="fantasma" onClick={() => navigate('/produtos')}>Cancelar</Botao>
-            <Botao type="submit" variante="primario" carregando={salvando}>Salvar Produto</Botao>
+            <Botao type="submit" variante="primario" carregando={salvando} disabled={enviandoImagem}>Salvar Produto</Botao>
           </div>
         </div>
       </form>

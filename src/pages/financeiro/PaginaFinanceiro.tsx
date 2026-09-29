@@ -50,7 +50,8 @@ const PaginaFinanceiro = () => {
 
   useEffect(() => {
     carregar();
-    return () => { requisicaoAtual.current++; };
+    const contador = requisicaoAtual;
+    return () => { contador.current++; };
   }, [carregar]);
 
   return (

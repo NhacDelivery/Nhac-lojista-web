@@ -15,8 +15,7 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { MensagemDTO } from './api';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL ||
-  (process.env.NODE_ENV === 'production' ? `${window.location.origin}/ws` : 'http://localhost:8080/ws');
+const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
 
 export interface ChatSocket {
   aoConectar: (callback: () => void) => void;
@@ -35,10 +34,7 @@ export interface ChatSocket {
  */
 export function conectarChatSocket(): ChatSocket {
   const assinaturasPorConversa = new Map<string, StompSubscription>();
-  const conversasDesejadas = new Map<string, (mensagem: MensagemDTO) => void>();
-  let conectado: (() => void) | undefined;
-  let desconectado: (() => void) | undefined;
-  let erro: ((mensagem: string) => void) | undefined;
+  const ouvintes = new Map<string, (mensagem: MensagemDTO) => void>();
 
   const client = new Client({
     webSocketFactory: () => new SockJS(WS_BASE_URL) as unknown as WebSocket,
@@ -55,42 +51,56 @@ export function conectarChatSocket(): ChatSocket {
     };
   };
 
-  const assinar = (id: string, onMensagem: (mensagem: MensagemDTO) => void) => {
-    if (!client.connected) return;
-    assinaturasPorConversa.get(id)?.unsubscribe();
-    const assinatura = client.subscribe(`/topic/conversas/${id}`, (frame: IMessage) => {
-      try { onMensagem(JSON.parse(frame.body) as MensagemDTO); } catch { /* histórico REST recupera o evento */ }
-    });
-    assinaturasPorConversa.set(id, assinatura);
+  const assinar = (conversaId: string) => {
+    const ouvinte = ouvintes.get(conversaId);
+    if (!ouvinte || !client.connected) return;
+    assinaturasPorConversa.get(conversaId)?.unsubscribe();
+    assinaturasPorConversa.set(conversaId, client.subscribe(`/topic/conversas/${conversaId}`, (frame: IMessage) => {
+      try {
+        ouvinte(JSON.parse(frame.body) as MensagemDTO);
+      } catch {
+        // Uma mensagem inválida não impede a reconexão; o histórico cobre a lacuna.
+      }
+    }));
   };
+
   client.onConnect = () => {
-    conversasDesejadas.forEach((handler, id) => assinar(id, handler));
-    client.subscribe('/user/queue/erros', (frame) => {
-      try { erro?.(JSON.parse(frame.body).erro ?? 'Não foi possível enviar a mensagem.'); }
-      catch { erro?.('Não foi possível enviar a mensagem.'); }
-    });
-    conectado?.();
+    assinaturasPorConversa.clear();
+    ouvintes.forEach((_, id) => assinar(id));
+    aoConectar?.();
   };
-  client.onWebSocketClose = () => { assinaturasPorConversa.clear(); desconectado?.(); };
-  client.onStompError = (frame) => erro?.(frame.headers?.message ?? 'Erro na conexão do chat.');
-  client.onWebSocketError = () => erro?.('Não foi possível conectar ao chat em tempo real.');
+  client.onWebSocketClose = () => {
+    assinaturasPorConversa.clear();
+    aoDesconectar?.();
+  };
+  let aoConectar: (() => void) | undefined;
+  let aoDesconectar: (() => void) | undefined;
   client.activate();
 
   return {
-    aoConectar(callback) { conectado = callback; if (client.connected) callback(); },
-    aoDesconectar(callback) { desconectado = callback; },
-    aoErro(callback) { erro = callback; },
+    aoConectar(callback) {
+      aoConectar = callback;
+      if (client.connected) callback();
+    },
+    aoDesconectar(callback) {
+      aoDesconectar = callback;
+    },
+    aoErro(callback) {
+      client.onStompError = (frame) => callback(frame.headers?.message ?? 'Erro na conexão do chat.');
+      client.onWebSocketError = () => callback('Não foi possível conectar ao chat em tempo real.');
+    },
     assinarConversa(conversaId, onMensagem) {
-      conversasDesejadas.set(conversaId, onMensagem);
-      assinar(conversaId, onMensagem);
+      ouvintes.set(conversaId, onMensagem);
+      assinar(conversaId);
+
       return () => {
-        conversasDesejadas.delete(conversaId);
         assinaturasPorConversa.get(conversaId)?.unsubscribe();
         assinaturasPorConversa.delete(conversaId);
+        ouvintes.delete(conversaId);
       };
     },
     enviarMensagem(conversaId, conteudo, clientMessageId) {
-      if (!client.connected || !assinaturasPorConversa.has(conversaId)) return false;
+      if (!client.connected) return false;
       client.publish({
         destination: `/app/conversas/${conversaId}/enviar`,
         body: JSON.stringify({ conteudo, clientMessageId }),
@@ -100,7 +110,7 @@ export function conectarChatSocket(): ChatSocket {
     desconectar() {
       assinaturasPorConversa.forEach((assinatura) => assinatura.unsubscribe());
       assinaturasPorConversa.clear();
-      conversasDesejadas.clear();
+      ouvintes.clear();
       client.deactivate();
     },
   };
