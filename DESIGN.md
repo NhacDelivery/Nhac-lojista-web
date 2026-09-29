@@ -99,3 +99,7 @@ Português direto: “Adicionar opção”, “Remover grupo”, “Salvar Produ
 - Mostrar estado de envio e erro antes de salvar imagens.
 - Não criar uma paleta independente para esta tela.
 - Não persistir prévias locais ou placeholders como imagem da loja.
+
+## Fluxos operacionais
+
+No chat, aguardar a confirmação da mensagem pelo servidor e recuperar o histórico após a reconexão. Na edição do endereço, exibir a posição marcada no mapa e só anunciar sucesso quando endereço e coordenadas forem salvos. A navegação deve manter acessíveis pedidos antigos, filtros e estados de erro.

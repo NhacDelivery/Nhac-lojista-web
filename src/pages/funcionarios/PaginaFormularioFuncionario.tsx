@@ -93,7 +93,7 @@ const PaginaFormularioFuncionario = () => {
 
   return (
     <LayoutPagina titulo={ehEdicao ? 'Editar Funcionário' : 'Novo Funcionário'}>
-      <form onSubmit={handleSalvar} className={estilos.form}>
+      <form onSubmit={handleSalvar} className={estilos.form} noValidate>
         <Cartao className={estilos.cartao}>
           <h3 className={estilos.tituloSecao}>Dados do Funcionário</h3>
 

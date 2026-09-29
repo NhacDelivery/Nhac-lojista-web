@@ -195,7 +195,7 @@ const PaginaFormularioProduto = () => {
         // o PUT não zerá-los (o DTO aceita `peso` string e estoque absoluto).
         peso: peso || undefined,
         percentualDesconto: percentualDesconto ? Number(percentualDesconto) : undefined,
-        estoque: estoque !== '' ? Number(estoque) : undefined,
+        estoque: ehEdicao && estoque !== '' ? Number(estoque) : undefined,
       };
 
       if (ehEdicao && id) {
@@ -296,14 +296,16 @@ const PaginaFormularioProduto = () => {
                 <Toggle ativo={ativo} aoMudar={setAtivo} rotulo="Produto Ativo" />
               </div>
 
-              <InputTexto
-                rotulo="Estoque (unidades)"
-                valor={estoque}
-                aoMudar={(v) => setEstoque(v.replace(/\D/g, ''))}
-                placeholder="Ex.: 100"
-                erro={erroCampo('estoque')}
-                onBlur={() => tocarCampo('estoque', estoque, validarEstoque)}
-              />
+              {ehEdicao && (
+                <InputTexto
+                  rotulo="Estoque (unidades)"
+                  valor={estoque}
+                  aoMudar={(v) => setEstoque(v.replace(/\D/g, ''))}
+                  placeholder="Ex.: 100"
+                  erro={erroCampo('estoque')}
+                  onBlur={() => tocarCampo('estoque', estoque, validarEstoque)}
+                />
+              )}
             </div>
           </Cartao>
 

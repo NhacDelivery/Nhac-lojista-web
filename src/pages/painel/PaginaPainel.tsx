@@ -35,22 +35,23 @@ const PaginaPainel = () => {
 
   const horaAgora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  const carregarPainel = useCallback(async () => {
+  const carregarPainel = useCallback(async (silencioso = false) => {
     try {
-      setCarregandoPainel(true);
-      setErro(null);
+      if (!silencioso) { setCarregandoPainel(true); setErro(null); }
       const dados = await buscarPainel();
       setPainel(dados);
     } catch (err) {
       const tratado = tratarErroApi(err);
-      setErro(tratado.mensagemGeral ?? 'Não foi possível carregar o painel.');
+      if (!silencioso) setErro(tratado.mensagemGeral ?? 'Não foi possível carregar o painel.');
     } finally {
-      setCarregandoPainel(false);
+      if (!silencioso) setCarregandoPainel(false);
     }
   }, []);
 
   useEffect(() => {
     carregarPainel();
+    const intervalo = window.setInterval(() => void carregarPainel(true), 30000);
+    return () => window.clearInterval(intervalo);
   }, [carregarPainel]);
 
   const formatoDataGrafico = (dataString: string) => {
@@ -94,7 +95,7 @@ const PaginaPainel = () => {
       <LayoutPagina titulo="Painel">
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--nhac-texto-claro)' }}>
           <p>{erro ?? 'Não foi possível carregar o painel.'}</p>
-          <Botao variante="secundario" onClick={carregarPainel}>Tentar novamente</Botao>
+          <Botao variante="secundario" onClick={() => void carregarPainel()}>Tentar novamente</Botao>
         </div>
       </LayoutPagina>
     );

@@ -772,7 +772,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
               <div>
                 <label className={estilos.rotuloTextarea}>Descrição da Loja</label>
                 <textarea
-                  className={estilos.textarea}
+                  style={{ resize: 'none' }}
+                  className={`${estilos.textarea} resize-none`}
                   value={descricaoLoja}
                   onChange={(e) => setDescricaoLoja(e.target.value)}
                   placeholder="Fale um pouco sobre sua loja e o que você oferece..."

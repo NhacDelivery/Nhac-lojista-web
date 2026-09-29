@@ -38,6 +38,7 @@ const PaginaConfiguracoesConta = () => {
   const [email, setEmail] = useState(usuario?.email ?? "");
   const [telefone, setTelefone] = useState(usuario?.telefone ?? "");
   const [senha, setSenha] = useState("");
+  const [senhaAtual, setSenhaAtual] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [editandoEmail, setEditandoEmail] = useState(false);
@@ -201,8 +202,9 @@ const PaginaConfiguracoesConta = () => {
    */
   const handleSalvarSenha = async () => {
     const novosErros = validarFormulario(
-      { senha, confirmarSenha },
+      { senhaAtual, senha, confirmarSenha },
       {
+        senhaAtual: (valor) => valor.trim() ? null : 'Informe a senha atual.',
         senha: validarSenhaRedefinicao,
         confirmarSenha: validarConfirmarSenha(senha),
       }
@@ -212,7 +214,8 @@ const PaginaConfiguracoesConta = () => {
 
     setSalvandoSenha(true);
     try {
-      await alterarSenha(senha, senha);
+      await alterarSenha(senhaAtual, senha);
+      setSenhaAtual("");
       setSenha("");
       setConfirmarSenha("");
       setErros({});
@@ -220,7 +223,7 @@ const PaginaConfiguracoesConta = () => {
       mostrarToast("Senha alterada com sucesso.");
     } catch (err) {
       const tratado = tratarErroApi(err);
-      setErros({ senha: tratado.mensagemGeral ?? "Erro ao alterar senha." });
+      setErros({ senhaAtual: tratado.mensagemGeral ?? "Erro ao alterar senha." });
     } finally {
       setSalvandoSenha(false);
     }
@@ -348,7 +351,14 @@ const PaginaConfiguracoesConta = () => {
                 {editandoSenha ? (
                   <div>
                     <InputTexto
-                      rotulo=""
+                      rotulo="Senha atual"
+                      tipo={mostrarSenha ? "text" : "password"}
+                      valor={senhaAtual}
+                      aoMudar={setSenhaAtual}
+                      erro={erros.senhaAtual}
+                    />
+                    <InputTexto
+                      rotulo="Nova senha"
                       tipo={mostrarSenha ? "text" : "password"}
                       valor={senha}
                       aoMudar={setSenha}
@@ -366,7 +376,7 @@ const PaginaConfiguracoesConta = () => {
                       }
                     />
                     <InputTexto
-                      rotulo=""
+                      rotulo="Confirmar nova senha"
                       tipo={mostrarSenha ? "text" : "password"}
                       valor={confirmarSenha}
                       aoMudar={setConfirmarSenha}

@@ -75,7 +75,7 @@ jobs:
 
       - name: Instalar dependências
         working-directory: Nhac-lojista-web
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Instalar Chromium
         working-directory: Nhac-lojista-web

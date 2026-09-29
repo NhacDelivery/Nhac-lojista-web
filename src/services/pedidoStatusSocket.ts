@@ -2,7 +2,8 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { StatusPedido } from '../types';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+const WS_BASE_URL = process.env.REACT_APP_WS_URL ||
+  (process.env.NODE_ENV === 'production' ? `${window.location.origin}/ws` : 'http://localhost:8080/ws');
 const STATUS_VALIDOS = new Set<StatusPedido>([
   'PENDENTE',
   'PAGO',
