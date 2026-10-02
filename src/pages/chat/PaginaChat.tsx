@@ -1,3 +1,4 @@
+import ConteudoMensagem, { lerReferenciaProduto } from './ConteudoMensagem';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Avatar from '../../components/ui/Avatar';
@@ -195,7 +196,7 @@ const PaginaChat = () => {
                     <span className={estilos.tempo}>{formatarData(conversa.ultimaMensagemEm).split(' ')[0]}</span>
                   </div>
                   <div className={estilos.linhaBase}>
-                    <span className={estilos.previa}>{conversa.ultimaMensagemPreview ?? 'Sem mensagens ainda'}</span>
+                    <span className={estilos.previa}>{lerReferenciaProduto(conversa.ultimaMensagemPreview ?? '')?.nome ?? conversa.ultimaMensagemPreview?.split('\n')[0] ?? 'Sem mensagens ainda'}</span>
                   </div>
                 </div>
                 {conversa.naoLidas > 0 && <div className={estilos.badge}>{conversa.naoLidas}</div>}
@@ -228,7 +229,7 @@ const PaginaChat = () => {
                         key={msg.id}
                         className={`${estilos.mensagemWrapper} ${msg.remetenteTipo === 'LOJA' ? estilos.minhaMensagem : estilos.mensagemCliente}`}
                       >
-                        <div className={estilos.balao}>{msg.conteudo}</div>
+                        <div className={estilos.balao}><ConteudoMensagem conteudo={msg.conteudo} /></div>
                         <span className={estilos.hora}>{formatarHora(msg.enviadaEm)}</span>
                       </div>
                     ))
