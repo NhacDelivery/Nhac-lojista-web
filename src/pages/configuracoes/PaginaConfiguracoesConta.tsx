@@ -57,6 +57,8 @@ const PaginaConfiguracoesConta = () => {
     notificarNovidades: false,
   });
   const [carregandoPreferencias, setCarregandoPreferencias] = useState(true);
+  const [erroPreferencias, setErroPreferencias] = useState(false);
+  const [tentativaPreferencias, setTentativaPreferencias] = useState(0);
   const [salvandoPreferencias, setSalvandoPreferencias] = useState(false);
 
   useEffect(() => {
@@ -66,13 +68,13 @@ const PaginaConfiguracoesConta = () => {
     }
 
     let ativo = true;
+    setCarregandoPreferencias(true); setErroPreferencias(false);
     (async () => {
       try {
         const dados = await buscarPreferenciasNotificacao(usuarioId);
         if (ativo) setPreferencias(dados);
       } catch {
-        // Sem preferências salvas ainda (ou serviço indisponível): mantém os
-        // padrões da tela; o usuário ainda pode alternar e salvar.
+        if (ativo) setErroPreferencias(true);
       } finally {
         if (ativo) setCarregandoPreferencias(false);
       }
@@ -81,14 +83,14 @@ const PaginaConfiguracoesConta = () => {
     return () => {
       ativo = false;
     };
-  }, [usuarioId]);
+  }, [usuarioId, tentativaPreferencias]);
 
   /**
    * O PUT substitui as 4 preferências de uma vez (todos obrigatórios no DTO),
    * então sempre enviamos o objeto completo.
    */
   const alternarPreferencia = async (campo: keyof PreferenciasNotificacaoDTO, valor: boolean) => {
-    if (!usuarioId) return;
+    if (!usuarioId || erroPreferencias || carregandoPreferencias || salvandoPreferencias) return;
 
     const anterior = preferencias;
     const novas = { ...preferencias, [campo]: valor };
@@ -429,32 +431,33 @@ const PaginaConfiguracoesConta = () => {
           </div>
 
           <div className={estilos.listaToggles}>
+            {erroPreferencias && <div role="alert">Não foi possível carregar suas preferências. <button onClick={() => setTentativaPreferencias(v => v + 1)}>Tentar novamente</button></div>}
             <Toggle
               rotulo="Novos pedidos"
               ativo={preferencias.notificarNovoPedido}
               aoMudar={(v) => alternarPreferencia("notificarNovoPedido", v)}
-              desabilitado={carregandoPreferencias || salvandoPreferencias}
+              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
             />
             <div className={estilos.divisor} />
             <Toggle
               rotulo="Mensagens de clientes"
               ativo={preferencias.notificarMensagens}
               aoMudar={(v) => alternarPreferencia("notificarMensagens", v)}
-              desabilitado={carregandoPreferencias || salvandoPreferencias}
+              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
             />
             <div className={estilos.divisor} />
             <Toggle
               rotulo="Avaliações"
               ativo={preferencias.notificarAvaliacoes}
               aoMudar={(v) => alternarPreferencia("notificarAvaliacoes", v)}
-              desabilitado={carregandoPreferencias || salvandoPreferencias}
+              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
             />
             <div className={estilos.divisor} />
             <Toggle
               rotulo="Novidades e promoções da Nhac"
               ativo={preferencias.notificarNovidades}
               aoMudar={(v) => alternarPreferencia("notificarNovidades", v)}
-              desabilitado={carregandoPreferencias || salvandoPreferencias}
+              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
             />
           </div>
         </Cartao>

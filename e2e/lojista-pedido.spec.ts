@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 const LOJISTA_EMAIL = 'e2e.lojista@nhac.local';
-const LOJISTA_PASSWORD = 'NhacE2E#123';
+const LOJISTA_PASSWORD = process.env.E2E_PASSWORD || '';
+if (process.env.RUN_E2E === 'true' && LOJISTA_PASSWORD.length < 12) throw new Error('E2E_PASSWORD temporária é obrigatória.');
 const PEDIDO_ID = 'e2e-pedido-lojista-001';
 
 async function entrar(page: import('@playwright/test').Page) {

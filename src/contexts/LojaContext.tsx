@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { buscarMinhaLoja, LojaResponseDTO } from '../services/api';
 import { useAutenticacao } from '../hooks/useAutenticacao';
 import { ehApiError, tratarErroApi } from '../utils/errosApi';
@@ -22,7 +22,14 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  const consulta = useRef(0);
+  const sessao = useRef(usuario?.id);
+  if (sessao.current !== usuario?.id) { sessao.current = usuario?.id; consulta.current++; }
+
   const recarregar = useCallback(async () => {
+    const numero = ++consulta.current;
+    const token = localStorage.getItem('@nhac:token');
+    const atual = () => numero === consulta.current && token === localStorage.getItem('@nhac:token');
     // A sessão pode ter sido criada nesta mesma ação de cadastro, antes do
     // próximo render do contexto. O cliente HTTP usa este mesmo token.
     if (!localStorage.getItem('@nhac:token')) {
@@ -36,6 +43,7 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
     setErro(null);
     try {
       const dados = await buscarMinhaLoja();
+      if (!atual()) return;
       if (dados) {
         setLoja(dados);
         setSemLoja(false);
@@ -44,6 +52,7 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
         setSemLoja(true);
       }
     } catch (err) {
+      if (!atual()) return;
       // 404 em /lojas/minha-loja = usuário NÃO tem loja (state inicial,
       // logo após o cadastro). Nunca é erro fatal — para o onboarding.
       if (ehApiError(err) && err.status === 404) {
@@ -64,13 +73,16 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
         setErro(tratado.mensagemGeral ?? 'Erro ao carregar loja.');
       }
     } finally {
-      setCarregando(false);
+      if (atual()) setCarregando(false);
     }
   }, [mostrarToast]);
 
   useEffect(() => {
-    recarregar();
-  }, [usuario, recarregar]);
+    setLoja(null); setSemLoja(false);
+    void recarregar();
+    const controle = consulta;
+    return () => { controle.current++; };
+  }, [usuario?.id, recarregar]);
 
   return (
     <LojaContext.Provider value={{ loja, semLoja, carregando, erro, recarregar }}>

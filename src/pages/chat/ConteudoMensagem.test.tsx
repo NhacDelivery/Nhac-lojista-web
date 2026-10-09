@@ -22,3 +22,11 @@ test('conversa normal continua normal e referência antiga sem foto é interpret
   expect(screen.getByText('Pizza')).toBeInTheDocument();
   expect(screen.queryByText(/ID:/)).toBeNull();
 });
+
+test('referência do pedido apresenta resumo e abre o detalhe correspondente', () => {
+  render(<ConteudoMensagem conteudo={'Pedido: #ABCD1234\nID: pedido-1\nResumo: 2x Pizza\nTotal: R$ 50,00\nStatus: Em preparo\n\nMeu pedido saiu?'} />);
+  expect(screen.getByText('#ABCD1234')).toBeInTheDocument();
+  expect(screen.getByText('2x Pizza')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Abrir pedido' })).toHaveAttribute('href', '/pedidos/pedido-1');
+  expect(screen.getByText('Meu pedido saiu?')).toBeInTheDocument();
+});

@@ -66,3 +66,9 @@
     padding: 0 16px;
   }
 }
+
+.conta { position: relative; }
+.botaoConta { border: 0; padding: 4px; background: transparent; cursor: pointer; border-radius: 50%; }
+.menuConta { position: absolute; right: 0; top: calc(100% + 8px); z-index: 50; width: 230px; padding: 8px; background: var(--nhac-fundo, white); border: 1px solid var(--nhac-borda, #eee); border-radius: 14px; box-shadow: 0 8px 28px #0002; }
+.menuConta button { display: block; width: 100%; border: 0; border-radius: 8px; padding: 12px; background: transparent; text-align: left; color: var(--nhac-texto); font: inherit; cursor: pointer; }
+.menuConta button:hover, .menuConta button:focus-visible { background: #fff0ee; }

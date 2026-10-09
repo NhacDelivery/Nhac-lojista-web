@@ -18,7 +18,7 @@ Fluxo deste slice:
 ## Fixtures
 
 - lojista: `e2e.lojista@nhac.local`
-- senha: `NhacE2E#123`
+- senha: variável `E2E_PASSWORD`, gerada para cada execução isolada
 - loja: `e2e-loja-001`
 - pedido: `e2e-pedido-lojista-001`
 - status inicial: `PAGO`

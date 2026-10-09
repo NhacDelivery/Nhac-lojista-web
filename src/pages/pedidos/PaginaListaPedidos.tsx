@@ -1,3 +1,4 @@
+import { chaveConta } from '../../services/endpoints';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
@@ -36,60 +37,59 @@ const PaginaListaPedidos = () => {
   const [avisos, setAvisos] = useState<string[]>([]);
   const [mostrarAvisos, setMostrarAvisos] = useState(false);
   const requisicaoAtual = useRef(0);
-  const idsConhecidos = useRef<Set<string> | null>(null);
 
-  const carregarPedidos = useCallback(async (silencioso = false) => {
-    const requisicao = ++requisicaoAtual.current;
-    try {
-      if (!silencioso) {
-        setCarregando(true);
-        setErro(null);
-      }
-      const resposta = await listarPedidosPagina({
-        status: filtro === 'todos' ? undefined : filtro,
-        page: pagina,
-        size: 30,
-      });
+  const execucao = useRef<Promise<void>>(Promise.resolve());
+  const ocupado = useRef(false);
+  const [erroAtualizacao, setErroAtualizacao] = useState<string | null>(null);
+  const carregarPedidos = useCallback((silencioso = false) => {
+    if (silencioso && ocupado.current) return Promise.resolve();
+    const requisicao = requisicaoAtual.current;
+    const executar = async () => {
       if (requisicao !== requisicaoAtual.current) return;
-      const dados = resposta.content ?? [];
-      setTotalPaginas(resposta.totalPages);
-      if (pagina > 0 && pagina >= resposta.totalPages) {
-        setPagina(Math.max(0, resposta.totalPages - 1));
-        return;
-      }
-      if (filtro === 'todos' && pagina === 0 && idsConhecidos.current) {
-        const novos = dados.filter((pedido) => !idsConhecidos.current?.has(pedido.id));
-        if (novos.length > 0) {
-          setAvisos((atuais) => [`${novos.length} novo(s) pedido(s) recebido(s).`, ...atuais].slice(0, 10));
+      ocupado.current = true;
+      if (!silencioso) { setCarregando(true); setErro(null); }
+      try {
+        const resposta = await listarPedidosPagina({ status: filtro === 'todos' ? undefined : filtro, page: pagina, size: 30 });
+        if (requisicao !== requisicaoAtual.current) return;
+        setPedidos(resposta.content ?? []); setTotalPaginas(resposta.totalPages); setErro(null); setErroAtualizacao(null); setCarregando(false);
+        if (pagina > 0 && pagina >= resposta.totalPages) { setPagina(Math.max(0, resposta.totalPages - 1)); return; }
+        setContagens(v => ({ ...v, [filtro]: resposta.totalElements }));
+        for (const { valor } of FILTROS) {
+          if (valor === filtro || requisicao !== requisicaoAtual.current) continue;
+          try {
+            const total = await listarPedidosPagina({ status: valor === 'todos' ? undefined : valor, size: 1 });
+            if (requisicao === requisicaoAtual.current) setContagens(v => ({ ...v, [valor]: total.totalElements }));
+          } catch { /* A lista permanece disponível quando uma contagem falha. */ }
         }
+      } catch (err) {
+        if (requisicao !== requisicaoAtual.current) return;
+        const mensagem = err instanceof Error ? err.message : 'Erro ao carregar pedidos';
+        if (silencioso) setErroAtualizacao(mensagem); else setErro(mensagem);
+      } finally {
+        ocupado.current = false;
+        if (requisicao === requisicaoAtual.current) setCarregando(false);
       }
-      if (filtro === 'todos' && pagina === 0) idsConhecidos.current = new Set(dados.map((pedido) => pedido.id));
-      setPedidos(dados);
-      const totais = await Promise.allSettled(FILTROS.map(async ({ valor }) => {
-        if (valor === filtro) return [valor, resposta.totalElements] as const;
-        const resultado = await listarPedidosPagina({ status: valor === 'todos' ? undefined : valor, size: 1 });
-        return [valor, resultado.totalElements] as const;
-      }));
-      if (requisicao === requisicaoAtual.current) setContagens((anteriores) => ({
-        ...anteriores,
-        ...Object.fromEntries(totais.filter((r): r is PromiseFulfilledResult<readonly [string, number]> => r.status === 'fulfilled')
-          .map((r) => r.value)),
-      }));
-    } catch (err) {
-      if (!silencioso && requisicao === requisicaoAtual.current) {
-        setErro(err instanceof Error ? err.message : 'Erro ao carregar pedidos');
-      }
-    } finally {
-      if (!silencioso && requisicao === requisicaoAtual.current) setCarregando(false);
-    }
+    };
+    execucao.current = execucao.current.catch(() => {}).then(executar);
+    return execucao.current;
   }, [filtro, pagina]);
 
   useEffect(() => {
+    requisicaoAtual.current++;
+    setPedidos([]); setCarregando(true);
     void carregarPedidos();
     const intervalo = window.setInterval(() => void carregarPedidos(true), 10000);
-    const contador = requisicaoAtual;
-    return () => { window.clearInterval(intervalo); contador.current++; };
+    const controle = requisicaoAtual;
+    return () => { window.clearInterval(intervalo); controle.current++; };
   }, [carregarPedidos]);
+
+  useEffect(() => {
+    const atualizar = () => {
+      try { setAvisos(JSON.parse(localStorage.getItem('@nhac:avisos:' + chaveConta()) || '[]')); } catch { setAvisos([]); }
+    };
+    atualizar(); window.addEventListener('nhac-avisos', atualizar);
+    return () => window.removeEventListener('nhac-avisos', atualizar);
+  }, []);
 
   const contagemPorFiltro = (valor: FiltroTag['valor']) =>
     contagens[valor] ?? 0;
@@ -123,13 +123,14 @@ const PaginaListaPedidos = () => {
           ))}
         </div>
 
+        {erroAtualizacao && <div role="alert">A atualização falhou. Os pedidos anteriores foram preservados. <Botao onClick={() => void carregarPedidos(true)}>Tentar novamente</Botao></div>}
         {carregando ? (
           <div className={estilos.vazio}>
             <p>Carregando pedidos...</p>
           </div>
         ) : erro ? (
           <div className={estilos.vazio}>
-            <p>{erro}</p>
+            <p>{erro}</p><Botao onClick={() => void carregarPedidos()}>Tentar novamente</Botao>
           </div>
         ) : pedidosFiltrados.length === 0 ? (
           <div className={estilos.vazio}>

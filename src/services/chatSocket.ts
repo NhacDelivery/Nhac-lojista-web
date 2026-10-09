@@ -15,7 +15,8 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { MensagemDTO } from './api';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+import { WS_BASE_URL } from './endpoints';
+
 
 export interface ChatSocket {
   aoConectar: (callback: () => void) => void;

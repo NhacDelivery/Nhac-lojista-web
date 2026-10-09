@@ -15,6 +15,7 @@ import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
 import { formatarData, formatarHora } from '../../utils/formatacao';
 import { Send, ArrowLeft, MessageSquare } from 'lucide-react';
+import { API_BASE_URL, chaveConta } from '../../services/endpoints';
 import estilos from './PaginaChat.module.css';
 
 const MENSAGENS_PRE_PRONTAS = [
@@ -34,18 +35,33 @@ const PaginaChat = () => {
   const [novaMensagem, setNovaMensagem] = useState('');
   const [carregandoConversas, setCarregandoConversas] = useState(true);
   const [carregandoMensagens, setCarregandoMensagens] = useState(false);
-  const [pendentes, setPendentes] = useState<Record<string, Pendente>>({});
+  const chavePersistencia = useRef(`@nhac:chat:${API_BASE_URL}:${chaveConta()}`);
+  const restaurados = useRef<Record<string, Pendente>>((() => {
+    try { const salvos = JSON.parse(localStorage.getItem(chavePersistencia.current) || '{}');
+      return Object.fromEntries(Object.entries(salvos).filter(([, v]: [string, any]) => typeof v?.id === 'string' && typeof v?.texto === 'string').map(([k,v]: [string, any]) => [k, { ...v, incerto: true }]));
+    } catch { return {}; }
+  })());
+  const [pendentes, setPendentes] = useState<Record<string, Pendente>>(restaurados.current);
 
   const socketRef = useRef<ChatSocket | null>(null);
   const desinscreverRef = useRef<(() => void) | null>(null);
   const ativaRef = useRef<string | null>(null);
-  const pendentesRef = useRef<Record<string, Pendente>>({});
+  const pendentesRef = useRef<Record<string, Pendente>>(restaurados.current);
   const prazosRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const rascunhosRef = useRef<Record<string, string>>({});
 
-  const atualizarPendentes = (valor: Record<string, Pendente>) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [paginaAntiga, setPaginaAntiga] = useState(0);
+  const [carregandoAntigas, setCarregandoAntigas] = useState(false);
+  const [maisAntigas, setMaisAntigas] = useState(true);
+  const restaurandoPosicao = useRef(false);
+  const listaOcupada = useRef(false);
+  const atualizarPendentes = (valor: Record<string, Pendente>): boolean => {
+    try { localStorage.setItem(chavePersistencia.current, JSON.stringify(valor)); }
+    catch { mostrarToast('Não foi possível guardar a mensagem neste aparelho. Libere espaço e tente novamente.'); return false; }
     pendentesRef.current = valor;
     setPendentes(valor);
+    return true;
   };
   const confirmar = (mensagem: MensagemDTO) => {
     const pendente = pendentesRef.current[mensagem.conversaId];
@@ -62,15 +78,18 @@ const PaginaChat = () => {
 
   const conversaAtiva = conversas.find((c) => c.id === conversaAtivaId) ?? null;
 
-  const carregarConversas = useCallback(async () => {
+  const carregarConversas = useCallback(async (silencioso = false) => {
+    if (listaOcupada.current) return;
+    listaOcupada.current = true;
     try {
-      setCarregandoConversas(true);
+      if (!silencioso) setCarregandoConversas(true);
       const dados = await listarConversas();
       setConversas(dados);
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(tratado.mensagemGeral ?? 'Não foi possível carregar as conversas.');
     } finally {
+      listaOcupada.current = false;
       setCarregandoConversas(false);
     }
   }, [mostrarToast]);
@@ -99,8 +118,10 @@ const PaginaChat = () => {
     socketRef.current = socket;
 
     carregarConversas();
+    const intervalo = setInterval(() => { void carregarConversas(true); const id = ativaRef.current; if (id) void marcarLida(id); }, 10000);
 
     return () => {
+      clearInterval(intervalo);
       desinscreverRef.current?.();
       Object.values(prazos).forEach(clearTimeout);
       socket.desconectar();
@@ -108,14 +129,37 @@ const PaginaChat = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const marcarLida = async (id: string) => {
+    if (ativaRef.current !== id) return;
+    try { await marcarConversaComoLida(id);
+      if (ativaRef.current === id) setConversas(atual => atual.map(c => c.id === id ? { ...c, naoLidas: 0 } : c));
+    } catch { mostrarToast('Não foi possível confirmar a leitura. Tentaremos novamente enquanto a conversa estiver aberta.'); }
+  };
+  useEffect(() => {
+    if (!restaurandoPosicao.current && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [mensagens, conversaAtivaId]);
+  const carregarAntigas = async () => {
+    const id = ativaRef.current; if (!id || carregandoAntigas) return;
+    setCarregandoAntigas(true); restaurandoPosicao.current = true;
+    const altura = scrollRef.current?.scrollHeight || 0; const topo = scrollRef.current?.scrollTop || 0;
+    try { const antigas = await listarMensagens(id, { page: paginaAntiga + 1 });
+      if (ativaRef.current !== id) return;
+      setMensagens(atual => [...new Map([...antigas, ...atual].map(m => [m.id,m])).values()].sort((a,b) => a.enviadaEm.localeCompare(b.enviadaEm)));
+      setPaginaAntiga(v => v + 1); setMaisAntigas(antigas.length === 30);
+      setTimeout(() => { if (ativaRef.current === id && scrollRef.current) scrollRef.current.scrollTop = topo + scrollRef.current.scrollHeight - altura; restaurandoPosicao.current = false; }, 0);
+    } catch { restaurandoPosicao.current = false; mostrarToast('Não foi possível carregar mensagens antigas. Tente novamente.'); }
+    finally { setCarregandoAntigas(false); }
+  };
+
   const handleSelecionarConversa = async (id: string) => {
     desinscreverRef.current?.();
     ativaRef.current = id;
     setConversaAtivaId(id);
-    setMensagens([]);
+    setMensagens([]); setPaginaAntiga(0); setMaisAntigas(true);
     setNovaMensagem(pendentesRef.current[id]?.texto ?? rascunhosRef.current[id] ?? '');
     desinscreverRef.current = socketRef.current?.assinarConversa(id, (mensagem) => {
       confirmar(mensagem);
+      if (mensagem.remetenteTipo !== 'LOJA') void marcarLida(id);
       setMensagens((atual) => atual.some((m) => m.id === mensagem.id) ? atual : [...atual, mensagem]);
       setConversas((atual) => atual.map((c) => c.id === mensagem.conversaId
         ? { ...c, ultimaMensagemPreview: mensagem.conteudo, ultimaMensagemEm: mensagem.enviadaEm }
@@ -138,10 +182,7 @@ const PaginaChat = () => {
       if (ativaRef.current === id) setCarregandoMensagens(false);
     }
 
-    marcarConversaComoLida(id).catch(() => {
-      /* melhor esforço — não bloqueia a experiência se falhar */
-    });
-    setConversas((atual) => atual.map((c) => (c.id === id ? { ...c, naoLidas: 0 } : c)));
+    await marcarLida(id);
 
   };
 
@@ -153,6 +194,7 @@ const PaginaChat = () => {
     if (pendente && !pendente.incerto) return;
     const texto = pendente?.texto ?? novaMensagem.trim();
     const identificador = pendente?.id ?? crypto.randomUUID();
+    if (!atualizarPendentes({ ...pendentesRef.current, [id]: { id: identificador, texto, incerto: true } })) return;
     if (!socketRef.current.enviarMensagem(id, texto, identificador)) {
       mostrarToast('Sem conexão com o chat. Tente novamente quando conectar.');
       return;
@@ -219,7 +261,8 @@ const PaginaChat = () => {
                 </div>
               </header>
 
-              <div className={estilos.mensagensContainer}>
+              <div className={estilos.mensagensContainer} ref={scrollRef}>
+                {maisAntigas && <button disabled={carregandoAntigas} onClick={() => void carregarAntigas()}>{carregandoAntigas ? 'Carregando…' : 'Carregar mensagens anteriores'}</button>}
                 <div className={estilos.mensagens}>
                   {carregandoMensagens ? (
                     <p style={{ color: 'var(--nhac-texto-claro)', textAlign: 'center' }}>Carregando mensagens...</p>

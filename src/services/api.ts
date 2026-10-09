@@ -5,8 +5,7 @@
 
 import { ApiError, ErroBackend } from '../utils/errosApi';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL ||
-  (process.env.NODE_ENV === 'production' ? `${window.location.origin}/api/v1` : 'http://localhost:8080/api/v1');
+import { API_BASE_URL } from './endpoints';
 
 function limparSessao(): void {
   localStorage.removeItem('@nhac:token');
@@ -28,7 +27,19 @@ function tratar401SessaoExpirada(): void {
 /**
  * Faz uma requisição HTTP genérica com tratamento de erros e autenticação
  */
-async function requisicao<T>(
+async function requisicao<T>(endpoint: string, opcoes: RequestInit = {}): Promise<T> {
+  const controller = new AbortController();
+  const abortar = () => controller.abort();
+  opcoes.signal?.addEventListener('abort', abortar, { once: true });
+  if (opcoes.signal?.aborted) controller.abort();
+  const prazo = setTimeout(abortar, 25000);
+  try { return await requisicaoSemTimeout<T>(endpoint, { ...opcoes, signal: controller.signal }); }
+  catch (erro) {
+    if (controller.signal.aborted) throw new Error('A requisição demorou demais ou foi cancelada. Tente novamente.');
+    throw erro;
+  } finally { clearTimeout(prazo); opcoes.signal?.removeEventListener('abort', abortar); }
+}
+async function requisicaoSemTimeout<T>(
   endpoint: string,
   opcoes: RequestInit = {}
 ): Promise<T> {
@@ -77,14 +88,14 @@ async function requisicao<T>(
     }
 
     // 401 com token presente = sessão expirada → logout + redirect /login
-    if (resposta.status === 401) {
+    if (resposta.status === 401 && token === localStorage.getItem('@nhac:token')) {
       tratar401SessaoExpirada();
     }
 
     // Observado no backend real: token inválido/expirado retorna 403 com
     // corpo vazio (filtro JWT do Spring Security). Nesse caso, também é
     // sessão inválida → logout. 403 COM corpo é erro de permissão (negócio).
-    if (resposta.status === 403 && corpoErro.erro === 'ErroDesconhecido') {
+    if (resposta.status === 403 && token === localStorage.getItem('@nhac:token') && corpoErro.erro === 'ErroDesconhecido') {
       tratar401SessaoExpirada();
     }
 

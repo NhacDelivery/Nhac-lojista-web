@@ -51,7 +51,7 @@ const PaginaFormularioProduto = () => {
   // backend sobrescreveria peso/desconto/estoque com null.
   const [peso, setPeso] = useState<string>('');
   const [percentualDesconto, setPercentualDesconto] = useState<string>('');
-  const [estoque, setEstoque] = useState<string>('');
+  const [estoque, setEstoque] = useState<string>('100');
   const [modalExcluirAberto, setModalExcluirAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -78,12 +78,13 @@ const PaginaFormularioProduto = () => {
 
   const validarTudo = (): boolean => {
     const novosErros = validarFormulario(
-      { nome, descricao, preco, categoria },
+      { nome, descricao, preco, categoria, estoque },
       {
         nome: validarNomeProduto,
         descricao: validarDescricaoProduto,
         preco: validarPreco,
         categoria: validarCategoria,
+        estoque: validarEstoque,
       }
     );
     adicionais.forEach((grupo, indice) => {
@@ -100,7 +101,7 @@ const PaginaFormularioProduto = () => {
       });
     });
     setErros(novosErros);
-    setErrosTocados({ nome: true, descricao: true, preco: true, categoria: true });
+    setErrosTocados({ nome: true, descricao: true, preco: true, categoria: true, estoque: true });
     return Object.keys(novosErros).length === 0;
   };
 
@@ -195,7 +196,7 @@ const PaginaFormularioProduto = () => {
         // o PUT não zerá-los (o DTO aceita `peso` string e estoque absoluto).
         peso: peso || undefined,
         percentualDesconto: percentualDesconto ? Number(percentualDesconto) : undefined,
-        estoque: ehEdicao && estoque !== '' ? Number(estoque) : undefined,
+        estoque: Number(estoque),
       };
 
       if (ehEdicao && id) {
@@ -296,7 +297,7 @@ const PaginaFormularioProduto = () => {
                 <Toggle ativo={ativo} aoMudar={setAtivo} rotulo="Produto Ativo" />
               </div>
 
-              {ehEdicao && (
+              {(
                 <InputTexto
                   rotulo="Estoque (unidades)"
                   valor={estoque}

@@ -45,3 +45,23 @@ test('mantém o texto até receber a confirmação do mesmo ID', async () => {
   await waitFor(() => expect(campo.value).toBe(''));
   expect(screen.queryByText('Aguardando confirmação da mensagem...')).toBeNull();
 });
+
+test('restaura a identificação e texto do envio incerto após remontar', async () => {
+  localStorage.clear();
+  (listarConversas as jest.Mock).mockResolvedValue([{ id: 'conversa-2', clienteNome: 'Outra pessoa', ultimaMensagemEm: new Date().toISOString(), naoLidas: 0 }]);
+  (listarMensagens as jest.Mock).mockResolvedValue([]);
+  (marcarConversaComoLida as jest.Mock).mockResolvedValue(undefined);
+  const enviarMensagem = jest.fn(() => true);
+  (conectarChatSocket as jest.Mock).mockReturnValue({ aoConectar: jest.fn(), aoErro: jest.fn(), assinarConversa: jest.fn(() => jest.fn()), enviarMensagem, desconectar: jest.fn() });
+  const primeiro = render(<PaginaChat />);
+  fireEvent.click(await screen.findByText('Outra pessoa'));
+  fireEvent.change(await screen.findByPlaceholderText('Digite sua mensagem...'), { target: { value: 'Envio preservado' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+  primeiro.unmount();
+  render(<PaginaChat />);
+  fireEvent.click(await screen.findByText('Outra pessoa'));
+  expect((await screen.findByPlaceholderText('Digite sua mensagem...') as HTMLInputElement).value).toBe('Envio preservado');
+  fireEvent.click(screen.getByRole('button', { name: 'Reenviar' }));
+  expect(enviarMensagem.mock.calls[1]).toEqual(enviarMensagem.mock.calls[0]);
+  localStorage.clear();
+});

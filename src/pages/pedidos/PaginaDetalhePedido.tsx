@@ -96,10 +96,10 @@ const PaginaDetalhePedido = () => {
       setPedido((pedidoAnterior) =>
         pedidoAnterior ? { ...pedidoAnterior, status: novoStatus } : pedidoAnterior,
       );
-    });
+    }, () => { void carregarPedido(); });
 
     return () => socket.desconectar();
-  }, [id, mostrarToast]);
+  }, [id, mostrarToast, carregarPedido]);
 
   if (carregando) {
     return (

@@ -110,6 +110,7 @@ function App() {
                   </RotaProtegidaComLoja>
                 }
               />
+              <Route path="/funcionarios/:id" element={<RotaProtegidaComLoja cargosPermitidos={['administrador']}><PaginaFormularioFuncionario /></RotaProtegidaComLoja>} />
               <Route
                 path="/funcionarios/novo"
                 element={
