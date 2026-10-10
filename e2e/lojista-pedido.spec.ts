@@ -14,11 +14,29 @@ test("recebe um pedido real, inicia preparo e impede concluir a entrega pelo loj
   const cartao = page.getByTestId(`e2e.order.${pedido.id}`);
   await expect(cartao).toBeVisible();
   await expect(page.getByTestId(`e2e.order.${pedido.id}.status`)).toContainText(
-    "Pago",
+    "Confirmar",
   );
   await cartao.click();
   await expect(page.getByText("1x Produto E2E")).toBeVisible();
   await expect(page.getByText("Integração painel")).toBeVisible();
+  await page.getByTestId("e2e.order.advance").click();
+  await page.getByTestId("confirmation-submit").click();
+  await expect(page.getByTestId("e2e.order.status")).toContainText("Pago");
+  await expect(page.getByTestId("e2e.order.advance")).toHaveText(
+    "Iniciar preparo",
+  );
+  await expect(
+    page.getByRole("button", { name: "Cancelar pedido", exact: true }),
+  ).toHaveCount(0);
+  const confirmado = await apiAutenticada();
+  try {
+    expect(
+      (await (await confirmado.get(`lojista/pedidos/${pedido.id}`)).json())
+        .status,
+    ).toBe("PAGO");
+  } finally {
+    await confirmado.dispose();
+  }
   await page.getByTestId("e2e.order.advance").click();
   await page.getByTestId("confirmation-submit").click();
   await expect(page.getByTestId("e2e.order.status")).toContainText(
@@ -56,7 +74,7 @@ test("cancelamento só acontece ao confirmar e persiste após recarregar", async
     .getByRole("button", { name: "Cancelar pedido", exact: true })
     .click();
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
-  await expect(page.getByTestId("e2e.order.status")).toContainText("Pago");
+  await expect(page.getByTestId("e2e.order.status")).toContainText("Confirmar");
   await page
     .getByRole("button", { name: "Cancelar pedido", exact: true })
     .click();
