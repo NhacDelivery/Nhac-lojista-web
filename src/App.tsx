@@ -1,42 +1,47 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ProvedorAutenticacao } from './contexts/AutenticacaoContext';
-import { ProvedorToast } from './contexts/ToastContext';
-import { ProvedorLoja } from './contexts/LojaContext';
-import RotaProtegida from './components/compartilhados/RotaProtegida';
-import { Cargo } from './types';
-import RotaExigeLoja from './components/compartilhados/RotaExigeLoja';
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ProvedorAutenticacao } from "./contexts/AutenticacaoContext";
+import { ProvedorToast } from "./contexts/ToastContext";
+import { ProvedorLoja } from "./contexts/LojaContext";
+import RotaProtegida from "./components/compartilhados/RotaProtegida";
+import { Cargo } from "./types";
+import RotaExigeLoja from "./components/compartilhados/RotaExigeLoja";
 
 // Páginas de autenticação
-import PaginaLogin from './pages/autenticacao/PaginaLogin';
-import PaginaCadastro from './pages/autenticacao/PaginaCadastro';
+import PaginaLogin from "./pages/autenticacao/PaginaLogin";
+import PaginaCadastro from "./pages/autenticacao/PaginaCadastro";
 
 // Páginas do dashboard
-import PaginaPainel from './pages/painel/PaginaPainel';
-import PaginaListaProdutos from './pages/produtos/PaginaListaProdutos';
-import PaginaFormularioProduto from './pages/produtos/PaginaFormularioProduto';
-import PaginaListaFuncionarios from './pages/funcionarios/PaginaListaFuncionarios';
-import PaginaFormularioFuncionario from './pages/funcionarios/PaginaFormularioFuncionario';
-import PaginaChat from './pages/chat/PaginaChat';
-import PaginaFinanceiro from './pages/financeiro/PaginaFinanceiro';
-import PaginaListaPedidos from './pages/pedidos/PaginaListaPedidos';
-import PaginaDetalhePedido from './pages/pedidos/PaginaDetalhePedido';
-import PaginaInformacaoLoja from './pages/configuracoes/PaginaInformacaoLoja';
-import PaginaEditarInfoLoja from './pages/configuracoes/PaginaEditarInfoLoja';
-import PaginaConfiguracoesConta from './pages/configuracoes/PaginaConfiguracoesConta';
-import PaginaEnderecoLoja from './pages/configuracoes/PaginaEnderecoLoja';
-import PaginaFormasPagamento from './pages/configuracoes/PaginaFormasPagamento';
-import PaginaRecuperarSenha from './pages/autenticacao/PaginaRecuperarSenha';
+import PaginaPainel from "./pages/painel/PaginaPainel";
+import PaginaListaProdutos from "./pages/produtos/PaginaListaProdutos";
+import PaginaFormularioProduto from "./pages/produtos/PaginaFormularioProduto";
+import PaginaListaFuncionarios from "./pages/funcionarios/PaginaListaFuncionarios";
+import PaginaFormularioFuncionario from "./pages/funcionarios/PaginaFormularioFuncionario";
+import PaginaChat from "./pages/chat/PaginaChat";
+import PaginaFinanceiro from "./pages/financeiro/PaginaFinanceiro";
+import PaginaListaPedidos from "./pages/pedidos/PaginaListaPedidos";
+import PaginaDetalhePedido from "./pages/pedidos/PaginaDetalhePedido";
+import PaginaInformacaoLoja from "./pages/configuracoes/PaginaInformacaoLoja";
+import PaginaEditarInfoLoja from "./pages/configuracoes/PaginaEditarInfoLoja";
+import PaginaConfiguracoesConta from "./pages/configuracoes/PaginaConfiguracoesConta";
+import PaginaEnderecoLoja from "./pages/configuracoes/PaginaEnderecoLoja";
+import PaginaFormasPagamento from "./pages/configuracoes/PaginaFormasPagamento";
+import PaginaRecuperarSenha from "./pages/autenticacao/PaginaRecuperarSenha";
 
 function RotaProtegidaComLoja({
   children,
   cargosPermitidos,
+  somenteDono,
 }: {
   children: React.ReactNode;
   cargosPermitidos?: Cargo[];
+  somenteDono?: boolean;
 }) {
   return (
-    <RotaProtegida cargosPermitidos={cargosPermitidos}>
+    <RotaProtegida
+      cargosPermitidos={cargosPermitidos}
+      somenteDono={somenteDono}
+    >
       <RotaExigeLoja>{children}</RotaExigeLoja>
     </RotaProtegida>
   );
@@ -52,13 +57,18 @@ function App() {
               {/* Rotas públicas */}
               <Route path="/login" element={<PaginaLogin />} />
               <Route path="/cadastro" element={<PaginaCadastro />} />
-              <Route path="/recuperar-senha" element={<PaginaRecuperarSenha />} />
+              <Route
+                path="/recuperar-senha"
+                element={<PaginaRecuperarSenha />}
+              />
 
               {/* Onboarding — exige autenticação, mas não exige loja */}
               <Route
                 path="/onboarding-loja"
                 element={
-                  <RotaProtegida cargosPermitidos={['cliente', 'administrador']}>
+                  <RotaProtegida
+                    cargosPermitidos={["cliente", "administrador"]}
+                  >
                     <PaginaCadastro modo="apenas-loja" />
                   </RotaProtegida>
                 }
@@ -71,7 +81,9 @@ function App() {
               <Route
                 path="/"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador', 'gerente']}>
+                  <RotaProtegidaComLoja
+                    cargosPermitidos={["administrador", "gerente"]}
+                  >
                     <PaginaPainel />
                   </RotaProtegidaComLoja>
                 }
@@ -80,7 +92,9 @@ function App() {
               <Route
                 path="/produtos"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador', 'gerente']}>
+                  <RotaProtegidaComLoja
+                    cargosPermitidos={["administrador", "gerente"]}
+                  >
                     <PaginaListaProdutos />
                   </RotaProtegidaComLoja>
                 }
@@ -88,7 +102,9 @@ function App() {
               <Route
                 path="/produtos/novo"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador', 'gerente']}>
+                  <RotaProtegidaComLoja
+                    cargosPermitidos={["administrador", "gerente"]}
+                  >
                     <PaginaFormularioProduto />
                   </RotaProtegidaComLoja>
                 }
@@ -96,7 +112,9 @@ function App() {
               <Route
                 path="/produtos/:id"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador', 'gerente']}>
+                  <RotaProtegidaComLoja
+                    cargosPermitidos={["administrador", "gerente"]}
+                  >
                     <PaginaFormularioProduto />
                   </RotaProtegidaComLoja>
                 }
@@ -105,16 +123,32 @@ function App() {
               <Route
                 path="/funcionarios"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja
+                    somenteDono
+                    cargosPermitidos={["administrador"]}
+                  >
                     <PaginaListaFuncionarios />
                   </RotaProtegidaComLoja>
                 }
               />
-              <Route path="/funcionarios/:id" element={<RotaProtegidaComLoja cargosPermitidos={['administrador']}><PaginaFormularioFuncionario /></RotaProtegidaComLoja>} />
+              <Route
+                path="/funcionarios/:id"
+                element={
+                  <RotaProtegidaComLoja
+                    somenteDono
+                    cargosPermitidos={["administrador"]}
+                  >
+                    <PaginaFormularioFuncionario />
+                  </RotaProtegidaComLoja>
+                }
+              />
               <Route
                 path="/funcionarios/novo"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja
+                    somenteDono
+                    cargosPermitidos={["administrador"]}
+                  >
                     <PaginaFormularioFuncionario />
                   </RotaProtegidaComLoja>
                 }
@@ -123,7 +157,9 @@ function App() {
               <Route
                 path="/chat"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador', 'gerente', 'atendente']}>
+                  <RotaProtegidaComLoja
+                    cargosPermitidos={["administrador", "gerente", "atendente"]}
+                  >
                     <PaginaChat />
                   </RotaProtegidaComLoja>
                 }
@@ -132,7 +168,9 @@ function App() {
               <Route
                 path="/pedidos"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador', 'gerente', 'atendente']}>
+                  <RotaProtegidaComLoja
+                    cargosPermitidos={["administrador", "gerente", "atendente"]}
+                  >
                     <PaginaListaPedidos />
                   </RotaProtegidaComLoja>
                 }
@@ -140,7 +178,9 @@ function App() {
               <Route
                 path="/pedidos/:id"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador', 'gerente', 'atendente']}>
+                  <RotaProtegidaComLoja
+                    cargosPermitidos={["administrador", "gerente", "atendente"]}
+                  >
                     <PaginaDetalhePedido />
                   </RotaProtegidaComLoja>
                 }
@@ -149,7 +189,7 @@ function App() {
               <Route
                 path="/configuracoes"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
                     <PaginaInformacaoLoja />
                   </RotaProtegidaComLoja>
                 }
@@ -157,7 +197,7 @@ function App() {
               <Route
                 path="/configuracoes/editar"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
                     <PaginaEditarInfoLoja />
                   </RotaProtegidaComLoja>
                 }
@@ -165,7 +205,7 @@ function App() {
               <Route
                 path="/configuracoes/conta"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
                     <PaginaConfiguracoesConta />
                   </RotaProtegidaComLoja>
                 }
@@ -173,7 +213,7 @@ function App() {
               <Route
                 path="/configuracoes/endereco"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
                     <PaginaEnderecoLoja />
                   </RotaProtegidaComLoja>
                 }
@@ -181,7 +221,7 @@ function App() {
               <Route
                 path="/configuracoes/pagamentos"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
                     <PaginaFormasPagamento />
                   </RotaProtegidaComLoja>
                 }
@@ -190,7 +230,7 @@ function App() {
               <Route
                 path="/financeiro"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={['administrador']}>
+                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
                     <PaginaFinanceiro />
                   </RotaProtegidaComLoja>
                 }

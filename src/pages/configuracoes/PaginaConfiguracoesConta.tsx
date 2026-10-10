@@ -8,6 +8,9 @@ import Botao from "../../components/ui/Botao";
 import { Mail, Phone, Lock, Eye, EyeOff, Bell } from "lucide-react";
 import {
   alterarSenha,
+  enviarCodigoTelefone,
+  atualizarTelefoneConfirmado,
+  buscarUsuario,
   atualizarUsuario,
   buscarPreferenciasNotificacao,
   atualizarPreferenciasNotificacao,
@@ -37,6 +40,8 @@ const PaginaConfiguracoesConta = () => {
   // Dados da conta — vêm da sessão (login/cadastro), sem mock.
   const [email, setEmail] = useState(usuario?.email ?? "");
   const [telefone, setTelefone] = useState(usuario?.telefone ?? "");
+  const [codigoTelefone, setCodigoTelefone] = useState("");
+  const [telefoneComCodigo, setTelefoneComCodigo] = useState("");
   const [senha, setSenha] = useState("");
   const [senhaAtual, setSenhaAtual] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
@@ -68,7 +73,8 @@ const PaginaConfiguracoesConta = () => {
     }
 
     let ativo = true;
-    setCarregandoPreferencias(true); setErroPreferencias(false);
+    setCarregandoPreferencias(true);
+    setErroPreferencias(false);
     (async () => {
       try {
         const dados = await buscarPreferenciasNotificacao(usuarioId);
@@ -89,8 +95,17 @@ const PaginaConfiguracoesConta = () => {
    * O PUT substitui as 4 preferências de uma vez (todos obrigatórios no DTO),
    * então sempre enviamos o objeto completo.
    */
-  const alternarPreferencia = async (campo: keyof PreferenciasNotificacaoDTO, valor: boolean) => {
-    if (!usuarioId || erroPreferencias || carregandoPreferencias || salvandoPreferencias) return;
+  const alternarPreferencia = async (
+    campo: keyof PreferenciasNotificacaoDTO,
+    valor: boolean,
+  ) => {
+    if (
+      !usuarioId ||
+      erroPreferencias ||
+      carregandoPreferencias ||
+      salvandoPreferencias
+    )
+      return;
 
     const anterior = preferencias;
     const novas = { ...preferencias, [campo]: valor };
@@ -110,7 +125,10 @@ const PaginaConfiguracoesConta = () => {
   };
 
   /** Sincroniza a sessão local (localStorage) com o retorno do backend. */
-  const sincronizarSessao = (dados: { email?: string; telefone?: string }, tokenNovo?: string) => {
+  const sincronizarSessao = (
+    dados: { email?: string; telefone?: string },
+    tokenNovo?: string,
+  ) => {
     const token = tokenNovo || localStorage.getItem("@nhac:token") || "";
     definirSessao(token, {
       id: usuarioId,
@@ -141,7 +159,9 @@ const PaginaConfiguracoesConta = () => {
 
     setSalvandoEmail(true);
     try {
-      const resposta = await atualizarUsuario(usuarioId, { email: emailNormalizado });
+      const resposta = await atualizarUsuario(usuarioId, {
+        email: emailNormalizado,
+      });
       const emailSalvo = resposta.email ?? emailNormalizado;
       setEmail(emailSalvo);
       sincronizarSessao({ email: emailSalvo }, resposta.accessToken);
@@ -163,13 +183,17 @@ const PaginaConfiguracoesConta = () => {
   };
 
   const handleSalvarTelefone = async () => {
-    const erro = validarTelefone(telefone);
+    const telefoneDigitos = soDigitos(telefone);
+    const erro = validarTelefone(
+      telefoneDigitos.startsWith("55") && telefoneDigitos.length > 11
+        ? telefoneDigitos.slice(2)
+        : telefoneDigitos,
+    );
     setErros(erro ? { telefone: erro } : {});
     if (erro) return;
     if (!usuarioId) return;
 
     // Cadastro/login gravam o telefone só com dígitos — mantemos o padrão.
-    const telefoneDigitos = soDigitos(telefone);
     if (telefoneDigitos === (usuario?.telefone ?? "")) {
       setEditandoTelefone(false);
       return;
@@ -177,21 +201,43 @@ const PaginaConfiguracoesConta = () => {
 
     setSalvandoTelefone(true);
     try {
-      const resposta = await atualizarUsuario(usuarioId, { telefone: telefoneDigitos });
-      // LoginResponseDTO (retorno do PUT /usuarios/{id}) não devolve
-      // `telefone`, então confirmamos com o valor que enviamos.
-      const telefoneSalvo = telefoneDigitos;
-      setTelefone(telefoneSalvo);
-      sincronizarSessao({ telefone: telefoneSalvo }, resposta.accessToken);
+      if (telefoneComCodigo !== telefoneDigitos) {
+        await enviarCodigoTelefone(
+          `+${telefoneDigitos.length <= 11 ? "55" : ""}${telefoneDigitos}`,
+        );
+        setTelefoneComCodigo(telefoneDigitos);
+        setCodigoTelefone("");
+        mostrarToast(
+          "Código enviado por SMS. Confirme para atualizar o telefone.",
+        );
+        return;
+      }
+      if (!/^\d{6}$/.test(codigoTelefone)) {
+        setErros({ codigoTelefone: "Informe os 6 dígitos do código SMS." });
+        return;
+      }
+      await atualizarTelefoneConfirmado(
+        `+${telefoneDigitos.length <= 11 ? "55" : ""}${telefoneDigitos}`,
+        codigoTelefone,
+      );
+      const perfil = await buscarUsuario(usuarioId);
+      setTelefone(perfil.telefone);
+      sincronizarSessao({ telefone: perfil.telefone });
+      setCodigoTelefone("");
+      setTelefoneComCodigo("");
       setEditandoTelefone(false);
       setErros({});
       mostrarToast("Telefone atualizado com sucesso.");
     } catch (err) {
       const tratado = tratarErroApi(err);
-      if (tratado.errosCampos) {
+      if (tratado.erroCodigo) {
+        setErros({ codigoTelefone: tratado.erroCodigo });
+      } else if (tratado.errosCampos) {
         setErros(tratado.errosCampos);
       } else {
-        setErros({ telefone: tratado.mensagemGeral ?? "Erro ao salvar telefone." });
+        setErros({
+          telefone: tratado.mensagemGeral ?? "Erro ao salvar telefone.",
+        });
       }
     } finally {
       setSalvandoTelefone(false);
@@ -206,10 +252,10 @@ const PaginaConfiguracoesConta = () => {
     const novosErros = validarFormulario(
       { senhaAtual, senha, confirmarSenha },
       {
-        senhaAtual: (valor) => valor.trim() ? null : 'Informe a senha atual.',
+        senhaAtual: (valor) => (valor.trim() ? null : "Informe a senha atual."),
         senha: validarSenhaRedefinicao,
         confirmarSenha: validarConfirmarSenha(senha),
-      }
+      },
     );
     setErros(novosErros);
     if (Object.keys(novosErros).length > 0) return;
@@ -225,7 +271,9 @@ const PaginaConfiguracoesConta = () => {
       mostrarToast("Senha alterada com sucesso.");
     } catch (err) {
       const tratado = tratarErroApi(err);
-      setErros({ senhaAtual: tratado.mensagemGeral ?? "Erro ao alterar senha." });
+      setErros({
+        senhaAtual: tratado.mensagemGeral ?? "Erro ao alterar senha.",
+      });
     } finally {
       setSalvandoSenha(false);
     }
@@ -297,13 +345,27 @@ const PaginaConfiguracoesConta = () => {
               <div className={estilos.itemTextos}>
                 <span className={estilos.itemRotulo}>Telefone</span>
                 {editandoTelefone ? (
-                  <InputTexto
-                    rotulo=""
-                    valor={telefone}
-                    aoMudar={(v) => setTelefone(mascaraTelefone(v))}
-                    placeholder="(11) 99999-0000"
-                    erro={erros.telefone}
-                  />
+                  <>
+                    <InputTexto
+                      rotulo="Novo telefone"
+                      valor={telefone}
+                      aoMudar={(v) => setTelefone(mascaraTelefone(v))}
+                      placeholder="(11) 99999-0000"
+                      erro={erros.telefone}
+                    />
+                    {telefoneComCodigo === soDigitos(telefone) && (
+                      <InputTexto
+                        rotulo="Código SMS"
+                        valor={codigoTelefone}
+                        aoMudar={(v) =>
+                          setCodigoTelefone(v.replace(/\D/g, "").slice(0, 6))
+                        }
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        erro={erros.codigoTelefone}
+                      />
+                    )}
+                  </>
                 ) : (
                   <span className={estilos.itemValor}>
                     {telefone ? mascaraTelefone(telefone) : "Não informado"}
@@ -317,7 +379,12 @@ const PaginaConfiguracoesConta = () => {
                   <Botao
                     variante="fantasma"
                     tamanho="pequeno"
-                    onClick={() => setEditandoTelefone(false)}
+                    onClick={() => {
+                      setEditandoTelefone(false);
+                      setTelefoneComCodigo("");
+                      setCodigoTelefone("");
+                      setTelefone(usuario?.telefone ?? "");
+                    }}
                   >
                     Cancelar
                   </Botao>
@@ -327,7 +394,9 @@ const PaginaConfiguracoesConta = () => {
                     carregando={salvandoTelefone}
                     onClick={handleSalvarTelefone}
                   >
-                    Salvar
+                    {telefoneComCodigo === soDigitos(telefone)
+                      ? "Confirmar telefone"
+                      : "Enviar código SMS"}
                   </Botao>
                 </>
               ) : (
@@ -370,10 +439,16 @@ const PaginaConfiguracoesConta = () => {
                         <button
                           type="button"
                           onClick={() => setMostrarSenha(!mostrarSenha)}
-                          aria-label={mostrarSenha ? "Ocultar senhas" : "Mostrar senhas"}
+                          aria-label={
+                            mostrarSenha ? "Ocultar senhas" : "Mostrar senhas"
+                          }
                           aria-pressed={mostrarSenha}
                         >
-                          {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+                          {mostrarSenha ? (
+                            <EyeOff size={16} />
+                          ) : (
+                            <Eye size={16} />
+                          )}
                         </button>
                       }
                     />
@@ -431,33 +506,56 @@ const PaginaConfiguracoesConta = () => {
           </div>
 
           <div className={estilos.listaToggles}>
-            {erroPreferencias && <div role="alert">Não foi possível carregar suas preferências. <button onClick={() => setTentativaPreferencias(v => v + 1)}>Tentar novamente</button></div>}
+            {erroPreferencias && (
+              <div role="alert">
+                Não foi possível carregar suas preferências.{" "}
+                <button onClick={() => setTentativaPreferencias((v) => v + 1)}>
+                  Tentar novamente
+                </button>
+              </div>
+            )}
             <Toggle
               rotulo="Novos pedidos"
               ativo={preferencias.notificarNovoPedido}
               aoMudar={(v) => alternarPreferencia("notificarNovoPedido", v)}
-              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
+              desabilitado={
+                erroPreferencias ||
+                carregandoPreferencias ||
+                salvandoPreferencias
+              }
             />
             <div className={estilos.divisor} />
             <Toggle
               rotulo="Mensagens de clientes"
               ativo={preferencias.notificarMensagens}
               aoMudar={(v) => alternarPreferencia("notificarMensagens", v)}
-              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
+              desabilitado={
+                erroPreferencias ||
+                carregandoPreferencias ||
+                salvandoPreferencias
+              }
             />
             <div className={estilos.divisor} />
             <Toggle
               rotulo="Avaliações"
               ativo={preferencias.notificarAvaliacoes}
               aoMudar={(v) => alternarPreferencia("notificarAvaliacoes", v)}
-              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
+              desabilitado={
+                erroPreferencias ||
+                carregandoPreferencias ||
+                salvandoPreferencias
+              }
             />
             <div className={estilos.divisor} />
             <Toggle
               rotulo="Novidades e promoções da Nhac"
               ativo={preferencias.notificarNovidades}
               aoMudar={(v) => alternarPreferencia("notificarNovidades", v)}
-              desabilitado={erroPreferencias || carregandoPreferencias || salvandoPreferencias}
+              desabilitado={
+                erroPreferencias ||
+                carregandoPreferencias ||
+                salvandoPreferencias
+              }
             />
           </div>
         </Cartao>

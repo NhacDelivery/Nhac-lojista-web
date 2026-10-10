@@ -3,13 +3,13 @@
  * Backend: https://github.com/Matheuskii/backend-nhac
  */
 
-import { ApiError, ErroBackend } from '../utils/errosApi';
+import { ApiError, ErroBackend } from "../utils/errosApi";
 
-import { API_BASE_URL } from './endpoints';
+import { API_BASE_URL } from "./endpoints";
 
 function limparSessao(): void {
-  localStorage.removeItem('@nhac:token');
-  localStorage.removeItem('@nhac:usuario');
+  localStorage.removeItem("@nhac:token");
+  localStorage.removeItem("@nhac:usuario");
 }
 
 /**
@@ -17,43 +17,57 @@ function limparSessao(): void {
  * Limpa sessão e redireciona para /login (o backend não tem refresh token).
  */
 function tratar401SessaoExpirada(): void {
-  const token = localStorage.getItem('@nhac:token');
+  const token = localStorage.getItem("@nhac:token");
   if (token) {
     limparSessao();
-    window.location.href = '/login';
+    window.location.href = "/login";
   }
 }
 
 /**
  * Faz uma requisição HTTP genérica com tratamento de erros e autenticação
  */
-async function requisicao<T>(endpoint: string, opcoes: RequestInit = {}): Promise<T> {
+async function requisicao<T>(
+  endpoint: string,
+  opcoes: RequestInit = {},
+): Promise<T> {
   const controller = new AbortController();
   const abortar = () => controller.abort();
-  opcoes.signal?.addEventListener('abort', abortar, { once: true });
+  opcoes.signal?.addEventListener("abort", abortar, { once: true });
   if (opcoes.signal?.aborted) controller.abort();
   const prazo = setTimeout(abortar, 25000);
-  try { return await requisicaoSemTimeout<T>(endpoint, { ...opcoes, signal: controller.signal }); }
-  catch (erro) {
-    if (controller.signal.aborted) throw new Error('A requisição demorou demais ou foi cancelada. Tente novamente.');
+  try {
+    return await requisicaoSemTimeout<T>(endpoint, {
+      ...opcoes,
+      signal: controller.signal,
+    });
+  } catch (erro) {
+    if (controller.signal.aborted)
+      throw new Error(
+        "A requisição demorou demais ou foi cancelada. Tente novamente.",
+      );
     throw erro;
-  } finally { clearTimeout(prazo); opcoes.signal?.removeEventListener('abort', abortar); }
+  } finally {
+    clearTimeout(prazo);
+    opcoes.signal?.removeEventListener("abort", abortar);
+  }
 }
 async function requisicaoSemTimeout<T>(
   endpoint: string,
-  opcoes: RequestInit = {}
+  opcoes: RequestInit = {},
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  const token = localStorage.getItem('@nhac:token');
+  const token = localStorage.getItem("@nhac:token");
 
   // Multipart (upload de imagem) NÃO pode receber Content-Type manual: o
   // navegador precisa gerar o header com o boundary do FormData. Definir
   // 'application/json' aqui faz o backend rejeitar o multipart.
-  const ehFormData = typeof FormData !== 'undefined' && opcoes.body instanceof FormData;
+  const ehFormData =
+    typeof FormData !== "undefined" && opcoes.body instanceof FormData;
 
   const cabecalhos: HeadersInit = {
-    ...(ehFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(ehFormData ? {} : { "Content-Type": "application/json" }),
     ...(token && { Authorization: `Bearer ${token}` }),
   };
 
@@ -68,7 +82,7 @@ async function requisicaoSemTimeout<T>(
   if (!resposta.ok) {
     let corpoErro: ErroBackend = {
       status: resposta.status,
-      erro: 'ErroDesconhecido',
+      erro: "ErroDesconhecido",
       mensagem: `Erro ${resposta.status}: ${resposta.statusText}`,
     };
 
@@ -77,7 +91,7 @@ async function requisicaoSemTimeout<T>(
       corpoErro = {
         requestId: json.requestId,
         status: json.status ?? resposta.status,
-        erro: json.erro ?? json.error ?? 'ErroDesconhecido',
+        erro: json.erro ?? json.error ?? "ErroDesconhecido",
         mensagem: json.mensagem ?? json.message ?? corpoErro.mensagem,
         timestamp: json.timestamp,
         path: json.path,
@@ -88,14 +102,25 @@ async function requisicaoSemTimeout<T>(
     }
 
     // 401 com token presente = sessão expirada → logout + redirect /login
-    if (resposta.status === 401 && token === localStorage.getItem('@nhac:token')) {
+    const senhaAtualIncorreta =
+      endpoint === "/auth/alterar-senha" &&
+      corpoErro.erro === "CREDENCIAIS_INVALIDAS";
+    if (
+      resposta.status === 401 &&
+      !senhaAtualIncorreta &&
+      token === localStorage.getItem("@nhac:token")
+    ) {
       tratar401SessaoExpirada();
     }
 
     // Observado no backend real: token inválido/expirado retorna 403 com
     // corpo vazio (filtro JWT do Spring Security). Nesse caso, também é
     // sessão inválida → logout. 403 COM corpo é erro de permissão (negócio).
-    if (resposta.status === 403 && token === localStorage.getItem('@nhac:token') && corpoErro.erro === 'ErroDesconhecido') {
+    if (
+      resposta.status === 403 &&
+      token === localStorage.getItem("@nhac:token") &&
+      corpoErro.erro === "ErroDesconhecido"
+    ) {
       tratar401SessaoExpirada();
     }
 
@@ -103,8 +128,8 @@ async function requisicaoSemTimeout<T>(
     // (spec §2/§7) — a UI já exibe a mensagem genérica via tratarErroApi.
     if (resposta.status >= 500) {
       console.error(
-        `[API] Erro ${resposta.status} em ${endpoint} — requestId: ${corpoErro.requestId ?? 'desconhecido'}`,
-        corpoErro
+        `[API] Erro ${resposta.status} em ${endpoint} — requestId: ${corpoErro.requestId ?? "desconhecido"}`,
+        corpoErro,
       );
     }
 
@@ -119,8 +144,8 @@ async function requisicaoSemTimeout<T>(
   // (ex.: /auth/enviar-codigo-cadastro, /auth/confirmar-email-cadastro,
   // /auth/alterar-senha, PATCH /pedidos/{id}/status). Tentar `resposta.json()`
   // num corpo vazio lança "Unexpected end of JSON input" — tratar como sucesso void.
-  const tipoConteudo = resposta.headers.get('content-type') ?? '';
-  if (!tipoConteudo.toLowerCase().includes('application/json')) {
+  const tipoConteudo = resposta.headers.get("content-type") ?? "";
+  if (!tipoConteudo.toLowerCase().includes("application/json")) {
     return undefined as T;
   }
 
@@ -132,8 +157,11 @@ async function requisicaoSemTimeout<T>(
   }
 }
 
-function extrairToken(resposta: { accessToken?: string; token?: string }): string {
-  return resposta.accessToken ?? resposta.token ?? '';
+function extrairToken(resposta: {
+  accessToken?: string;
+  token?: string;
+}): string {
+  return resposta.accessToken ?? resposta.token ?? "";
 }
 
 // ==================== Autenticação ====================
@@ -197,9 +225,11 @@ export function buscarUsuario(id: string): Promise<UsuarioResponseDTO> {
  * Registra um novo usuário (conta sem loja)
  * POST /auth/registrar
  */
-export async function registrar(dados: RegistroRequestDTO): Promise<RegistroResponseDTO & { accessToken: string }> {
-  const resposta = await requisicao<RegistroResponseDTO>('/auth/registrar', {
-    method: 'POST',
+export async function registrar(
+  dados: RegistroRequestDTO,
+): Promise<RegistroResponseDTO & { accessToken: string }> {
+  const resposta = await requisicao<RegistroResponseDTO>("/auth/registrar", {
+    method: "POST",
     body: JSON.stringify(dados),
   });
   return { ...resposta, accessToken: extrairToken(resposta) };
@@ -213,9 +243,11 @@ export async function registrar(dados: RegistroRequestDTO): Promise<RegistroResp
  * 429 TENTATIVAS_LOGIN_EXCEDIDAS → bloqueio com temporizador.
  * O header `Content-Type: application/json` é garantido pelo `requisicao`.
  */
-export async function login(dados: LoginRequestDTO): Promise<LoginResponseDTO & { accessToken: string }> {
-  const resposta = await requisicao<LoginResponseDTO>('/auth/login', {
-    method: 'POST',
+export async function login(
+  dados: LoginRequestDTO,
+): Promise<LoginResponseDTO & { accessToken: string }> {
+  const resposta = await requisicao<LoginResponseDTO>("/auth/login", {
+    method: "POST",
     body: JSON.stringify(dados),
   });
   return { ...resposta, accessToken: extrairToken(resposta) };
@@ -230,8 +262,8 @@ export async function login(dados: LoginRequestDTO): Promise<LoginResponseDTO & 
  */
 export async function enviarCodigoCadastro(emailBruto: string): Promise<void> {
   const email = emailBruto.trim().toLowerCase();
-  return requisicao<void>('/auth/enviar-codigo-cadastro', {
-    method: 'POST',
+  return requisicao<void>("/auth/enviar-codigo-cadastro", {
+    method: "POST",
     body: JSON.stringify({ email }),
   });
 }
@@ -244,12 +276,17 @@ export async function enviarCodigoCadastro(emailBruto: string): Promise<void> {
  * erro o código é bloqueado → exigir novo envio.
  * 400 "Código de verificação inválido." | "Código de verificação expirado."
  */
-export async function confirmarEmailCadastro(emailBruto: string, codigoBruto: string): Promise<void> {
+export async function confirmarEmailCadastro(
+  emailBruto: string,
+  codigoBruto: string,
+): Promise<void> {
   // Spec §3.3: codigo sempre string de 6 dígitos (zeros à esquerda).
   const email = emailBruto.trim().toLowerCase();
-  const codigo = String(codigoBruto ?? '').replace(/\D/g, '').slice(0, 6);
-  return requisicao<void>('/auth/confirmar-email-cadastro', {
-    method: 'POST',
+  const codigo = String(codigoBruto ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 6);
+  return requisicao<void>("/auth/confirmar-email-cadastro", {
+    method: "POST",
     body: JSON.stringify({ email, codigo }),
   });
 }
@@ -259,10 +296,12 @@ export async function confirmarEmailCadastro(emailBruto: string, codigoBruto: st
  * POST /auth/checar-email — body: { email } → { existe: boolean }
  * Uso: decidir entre o fluxo de login (existe=true) ou de cadastro (existe=false).
  */
-export async function checarEmail(emailBruto: string): Promise<{ existe: boolean }> {
+export async function checarEmail(
+  emailBruto: string,
+): Promise<{ existe: boolean }> {
   const email = emailBruto.trim().toLowerCase();
-  return requisicao<{ existe: boolean }>('/auth/checar-email', {
-    method: 'POST',
+  return requisicao<{ existe: boolean }>("/auth/checar-email", {
+    method: "POST",
     body: JSON.stringify({ email }),
   });
 }
@@ -274,8 +313,8 @@ export async function checarEmail(emailBruto: string): Promise<{ existe: boolean
  * POST /auth/esqueci-senha/email — body: { email }
  */
 export async function esqueciSenhaEmail(email: string): Promise<void> {
-  return requisicao<void>('/auth/esqueci-senha/email', {
-    method: 'POST',
+  return requisicao<void>("/auth/esqueci-senha/email", {
+    method: "POST",
     body: JSON.stringify({ email }),
   });
 }
@@ -288,10 +327,10 @@ export async function esqueciSenhaEmail(email: string): Promise<void> {
 export async function redefinirSenhaEmail(
   email: string,
   codigo: string,
-  novaSenha: string
+  novaSenha: string,
 ): Promise<void> {
-  return requisicao<void>('/auth/redefinir-senha/email', {
-    method: 'POST',
+  return requisicao<void>("/auth/redefinir-senha/email", {
+    method: "POST",
     body: JSON.stringify({ email, codigo, novaSenha }),
   });
 }
@@ -301,9 +340,12 @@ export async function redefinirSenhaEmail(
  * PUT /auth/alterar-senha — body: { senhaAtual, novaSenha }
  * novaSenha: @Size(min=6). Erros: 401 "A senha atual informada está incorreta."
  */
-export async function alterarSenha(senhaAtual: string, novaSenha: string): Promise<void> {
-  return requisicao<void>('/auth/alterar-senha', {
-    method: 'PUT',
+export async function alterarSenha(
+  senhaAtual: string,
+  novaSenha: string,
+): Promise<void> {
+  return requisicao<void>("/auth/alterar-senha", {
+    method: "PUT",
     body: JSON.stringify({ senhaAtual, novaSenha }),
   });
 }
@@ -368,10 +410,13 @@ export interface LojaResponseDTO extends LojaCreateDTO {
 
 /** Coordenadas reais do estabelecimento, usadas para encontrar entregadores próximos. */
 export async function atualizarLocalizacaoLoja(
-  id: string, latitude: number, longitude: number, endereco?: EnderecoLojaDTO
+  id: string,
+  latitude: number,
+  longitude: number,
+  endereco?: EnderecoLojaDTO,
 ): Promise<LojaResponseDTO> {
   return requisicao<LojaResponseDTO>(`/lojas/${id}/localizacao`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify({ latitude, longitude, endereco }),
   });
 }
@@ -392,8 +437,8 @@ export async function atualizarLocalizacaoLoja(
  * horarios{domingo..sabado}, formasPagamento{6 flags}.
  */
 export async function criarLoja(dados: LojaCreateDTO): Promise<{ id: string }> {
-  return requisicao<{ id: string }>('/lojas', {
-    method: 'POST',
+  return requisicao<{ id: string }>("/lojas", {
+    method: "POST",
     body: JSON.stringify(dados),
   });
 }
@@ -408,7 +453,7 @@ export async function criarLoja(dados: LojaCreateDTO): Promise<{ id: string }> {
  */
 export async function buscarMinhaLoja(): Promise<LojaResponseDTO | null> {
   try {
-    return await requisicao<LojaResponseDTO>('/lojas/minha-loja');
+    return await requisicao<LojaResponseDTO>("/lojas/minha-loja");
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       return null;
@@ -424,9 +469,12 @@ export async function buscarMinhaLoja(): Promise<LojaResponseDTO | null> {
  * o objeto completo (normalmente espalhando a loja já carregada do contexto
  * e sobrescrevendo só os campos que mudaram), nunca só os campos editados.
  */
-export async function atualizarLoja(id: string, dados: LojaCreateDTO): Promise<LojaResponseDTO> {
+export async function atualizarLoja(
+  id: string,
+  dados: LojaCreateDTO,
+): Promise<LojaResponseDTO> {
   return requisicao<LojaResponseDTO>(`/lojas/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(dados),
   });
 }
@@ -437,9 +485,12 @@ export async function atualizarLoja(id: string, dados: LojaCreateDTO): Promise<L
  * Use esta rota no toggle do painel: PUT /lojas/{id} exige o payload inteiro
  * e pode perder dados se algo estiver desatualizado no contexto.
  */
-export async function atualizarAberturaLoja(id: string, isAberto: boolean): Promise<LojaResponseDTO> {
+export async function atualizarAberturaLoja(
+  id: string,
+  isAberto: boolean,
+): Promise<LojaResponseDTO> {
   return requisicao<LojaResponseDTO>(`/lojas/${id}/abertura`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify({ isAberto }),
   });
 }
@@ -461,18 +512,21 @@ export interface CalcularFreteResponseDTO {
 
 export async function calcularFrete(
   lojaId: string,
-  dados: CalcularFreteRequestDTO
+  dados: CalcularFreteRequestDTO,
 ): Promise<CalcularFreteResponseDTO> {
-  return requisicao<CalcularFreteResponseDTO>(`/lojas/${lojaId}/calcular-frete`, {
-    method: 'POST',
-    body: JSON.stringify(dados),
-  });
+  return requisicao<CalcularFreteResponseDTO>(
+    `/lojas/${lojaId}/calcular-frete`,
+    {
+      method: "POST",
+      body: JSON.stringify(dados),
+    },
+  );
 }
 
 // ==================== Uploads (Firebase Storage via backend) ====================
 
 /** Pastas aceitas pelo backend (UploadService.PASTAS_PERMITIDAS). */
-export type PastaUpload = 'lojas' | 'produtos';
+export type PastaUpload = "lojas" | "produtos";
 
 /**
  * Envia uma imagem para o Firebase Storage e devolve a URL pública.
@@ -481,13 +535,16 @@ export type PastaUpload = 'lojas' | 'produtos';
  * acima do limite (5MB padrão) ou pasta inválida.
  * A URL retornada é persistente — usar em `imagemUrl` de loja/produto.
  */
-export async function enviarImagem(arquivo: File, pasta: PastaUpload): Promise<string> {
+export async function enviarImagem(
+  arquivo: File,
+  pasta: PastaUpload,
+): Promise<string> {
   const dados = new FormData();
-  dados.append('arquivo', arquivo);
-  dados.append('pasta', pasta);
+  dados.append("arquivo", arquivo);
+  dados.append("pasta", pasta);
 
-  const resposta = await requisicao<{ url: string }>('/uploads/imagem', {
-    method: 'POST',
+  const resposta = await requisicao<{ url: string }>("/uploads/imagem", {
+    method: "POST",
     body: dados,
   });
   return resposta.url;
@@ -535,16 +592,24 @@ export interface ResumoAvaliacoesDTO {
  * Lista produtos da loja do lojista autenticado (paginado).
  * GET /lojista/produtos
  */
-export async function listarProdutos(params?: { page?: number; size?: number }): Promise<ProdutoLojistaDTO[]> {
+export async function listarProdutos(params?: {
+  page?: number;
+  size?: number;
+}): Promise<ProdutoLojistaDTO[]> {
   return (await listarProdutosPagina(params)).content ?? [];
 }
 
-export async function listarProdutosPagina(params?: { page?: number; size?: number }): Promise<PaginaSpring<ProdutoLojistaDTO>> {
+export async function listarProdutosPagina(params?: {
+  page?: number;
+  size?: number;
+}): Promise<PaginaSpring<ProdutoLojistaDTO>> {
   const search = new URLSearchParams();
-  search.set('size', String(params?.size ?? 100));
-  if (params?.page !== undefined) search.set('page', String(params.page));
+  search.set("size", String(params?.size ?? 100));
+  if (params?.page !== undefined) search.set("page", String(params.page));
 
-  const pagina = await requisicao<PaginaSpring<ProdutoLojistaDTO>>(`/lojista/produtos?${search.toString()}`);
+  const pagina = await requisicao<PaginaSpring<ProdutoLojistaDTO>>(
+    `/lojista/produtos?${search.toString()}`,
+  );
   return pagina;
 }
 
@@ -563,9 +628,11 @@ export async function buscarProduto(id: string): Promise<ProdutoLojistaDTO> {
  * Cria um novo produto
  * POST /produtos
  */
-export async function criarProduto(dados: ProdutoLojistaDTO): Promise<{ id: string }> {
-  return requisicao<{ id: string }>('/produtos', {
-    method: 'POST',
+export async function criarProduto(
+  dados: ProdutoLojistaDTO,
+): Promise<{ id: string }> {
+  return requisicao<{ id: string }>("/produtos", {
+    method: "POST",
     body: JSON.stringify(dados),
   });
 }
@@ -574,10 +641,14 @@ export async function criarProduto(dados: ProdutoLojistaDTO): Promise<{ id: stri
  * Atualiza um produto existente
  * PUT /produtos/{id}
  */
-export async function atualizarProduto(id: string, dados: ProdutoLojistaDTO): Promise<void> {
-  const { ativo, id: _id, ...campos } = dados;
+export async function atualizarProduto(
+  id: string,
+  dados: ProdutoLojistaDTO,
+): Promise<void> {
+  const { ativo, ...campos } = dados;
+  delete campos.id;
   return requisicao<void>(`/produtos/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({ ...campos, isAtivo: ativo }),
   });
 }
@@ -588,7 +659,7 @@ export async function atualizarProduto(id: string, dados: ProdutoLojistaDTO): Pr
  */
 export async function desativarProduto(id: string): Promise<void> {
   return requisicao<void>(`/produtos/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
@@ -598,7 +669,7 @@ export async function desativarProduto(id: string): Promise<void> {
  */
 export async function ativarProduto(id: string): Promise<void> {
   return requisicao<void>(`/produtos/${id}/ativar`, {
-    method: 'PATCH',
+    method: "PATCH",
   });
 }
 
@@ -607,9 +678,12 @@ export async function ativarProduto(id: string): Promise<void> {
  * PATCH /produtos/{id}/estoque — body: { estoque } (AtualizarEstoqueDTO,
  * valor ABSOLUTO e >= 0, não incremento).
  */
-export async function atualizarEstoqueProduto(id: string, estoque: number): Promise<ProdutoLojistaDTO> {
+export async function atualizarEstoqueProduto(
+  id: string,
+  estoque: number,
+): Promise<ProdutoLojistaDTO> {
   return requisicao<ProdutoLojistaDTO>(`/produtos/${id}/estoque`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify({ estoque }),
   });
 }
@@ -618,7 +692,9 @@ export async function atualizarEstoqueProduto(id: string, estoque: number): Prom
  * Resumo de avaliações de um produto
  * GET /produtos/{id}/avaliacoes/resumo
  */
-export async function resumoAvaliacoesProduto(id: string): Promise<ResumoAvaliacoesDTO> {
+export async function resumoAvaliacoesProduto(
+  id: string,
+): Promise<ResumoAvaliacoesDTO> {
   return requisicao<ResumoAvaliacoesDTO>(`/produtos/${id}/avaliacoes/resumo`);
 }
 
@@ -696,11 +772,13 @@ export async function listarPedidosPagina(filtros?: {
   size?: number;
 }): Promise<PaginaSpring<PedidoResumoLojistaDTO>> {
   const params = new URLSearchParams();
-  params.set('size', String(filtros?.size ?? 100));
-  if (filtros?.page !== undefined) params.set('page', String(filtros.page));
-  if (filtros?.status) params.set('status', filtros.status);
+  params.set("size", String(filtros?.size ?? 100));
+  if (filtros?.page !== undefined) params.set("page", String(filtros.page));
+  if (filtros?.status) params.set("status", filtros.status);
 
-  const pagina = await requisicao<PaginaSpring<PedidoResumoLojistaDTO>>(`/lojista/pedidos?${params.toString()}`);
+  const pagina = await requisicao<PaginaSpring<PedidoResumoLojistaDTO>>(
+    `/lojista/pedidos?${params.toString()}`,
+  );
   return pagina;
 }
 
@@ -708,7 +786,9 @@ export async function listarPedidosPagina(filtros?: {
  * Detalhe de pedido para o lojista.
  * GET /lojista/pedidos/{id} — novo nesta rodada.
  */
-export async function buscarPedido(id: string): Promise<PedidoDetalheLojistaDTO> {
+export async function buscarPedido(
+  id: string,
+): Promise<PedidoDetalheLojistaDTO> {
   return requisicao<PedidoDetalheLojistaDTO>(`/lojista/pedidos/${id}`);
 }
 
@@ -718,9 +798,12 @@ export async function buscarPedido(id: string): Promise<PedidoDetalheLojistaDTO>
  * (O cancelamento pelo painel passa por aqui com status "CANCELADO" — o
  * backend agora devolve o estoque nesse caminho também, ver Round 20.)
  */
-export async function atualizarStatusPedido(id: string, status: string): Promise<void> {
+export async function atualizarStatusPedido(
+  id: string,
+  status: string,
+): Promise<void> {
   return requisicao<void>(`/pedidos/${id}/status`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify({ status }),
   });
 }
@@ -728,7 +811,7 @@ export async function atualizarStatusPedido(id: string, status: string): Promise
 /** Reenvia manualmente a oferta quando nenhum entregador aceitou o despacho automático. */
 export async function despacharPedido(id: string): Promise<unknown[]> {
   return requisicao<unknown[]>(`/entregas/despachar/${id}`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
@@ -738,7 +821,7 @@ export async function despacharPedido(id: string): Promise<unknown[]> {
  */
 export async function cancelarPedido(id: string): Promise<void> {
   return requisicao<void>(`/pedidos/${id}/cancelar`, {
-    method: 'PATCH',
+    method: "PATCH",
   });
 }
 
@@ -774,22 +857,29 @@ export interface FuncionarioUpdateDTO {
 
 /** GET /lojista/funcionarios */
 export async function listarFuncionarios(): Promise<FuncionarioResponseDTO[]> {
-  const pagina = await requisicao<PaginaSpring<FuncionarioResponseDTO>>('/lojista/funcionarios?size=100');
+  const pagina = await requisicao<PaginaSpring<FuncionarioResponseDTO>>(
+    "/lojista/funcionarios?size=100",
+  );
   return pagina.content ?? [];
 }
 
 /** POST /lojista/funcionarios — restrito ao dono da loja */
-export async function criarFuncionario(dados: FuncionarioCreateDTO): Promise<FuncionarioResponseDTO> {
-  return requisicao<FuncionarioResponseDTO>('/lojista/funcionarios', {
-    method: 'POST',
+export async function criarFuncionario(
+  dados: FuncionarioCreateDTO,
+): Promise<FuncionarioResponseDTO> {
+  return requisicao<FuncionarioResponseDTO>("/lojista/funcionarios", {
+    method: "POST",
     body: JSON.stringify(dados),
   });
 }
 
 /** PUT /lojista/funcionarios/{id} — não altera e-mail nem senha */
-export async function atualizarFuncionario(id: string, dados: FuncionarioUpdateDTO): Promise<FuncionarioResponseDTO> {
+export async function atualizarFuncionario(
+  id: string,
+  dados: FuncionarioUpdateDTO,
+): Promise<FuncionarioResponseDTO> {
   return requisicao<FuncionarioResponseDTO>(`/lojista/funcionarios/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(dados),
   });
 }
@@ -797,15 +887,20 @@ export async function atualizarFuncionario(id: string, dados: FuncionarioUpdateD
 /** DELETE /lojista/funcionarios/{id} — soft delete, já bloqueia login */
 export async function desativarFuncionario(id: string): Promise<void> {
   return requisicao<void>(`/lojista/funcionarios/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
 /** PATCH /lojista/funcionarios/{id}/ativar */
-export async function reativarFuncionario(id: string): Promise<FuncionarioResponseDTO> {
-  return requisicao<FuncionarioResponseDTO>(`/lojista/funcionarios/${id}/ativar`, {
-    method: 'PATCH',
-  });
+export async function reativarFuncionario(
+  id: string,
+): Promise<FuncionarioResponseDTO> {
+  return requisicao<FuncionarioResponseDTO>(
+    `/lojista/funcionarios/${id}/ativar`,
+    {
+      method: "PATCH",
+    },
+  );
 }
 
 // ==================== Usuário (conta do lojista) ====================
@@ -841,18 +936,22 @@ export interface PreferenciasNotificacaoDTO {
  */
 export async function atualizarUsuario(
   id: string,
-  dados: UsuarioAtualizarDTO
+  dados: UsuarioAtualizarDTO,
 ): Promise<LoginResponseDTO & { accessToken: string }> {
   const resposta = await requisicao<LoginResponseDTO>(`/usuarios/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(dados),
   });
   return { ...resposta, accessToken: extrairToken(resposta) };
 }
 
 /** GET /usuarios/{id}/preferencias-notificacao (restrito ao dono) */
-export async function buscarPreferenciasNotificacao(id: string): Promise<PreferenciasNotificacaoDTO> {
-  return requisicao<PreferenciasNotificacaoDTO>(`/usuarios/${id}/preferencias-notificacao`);
+export async function buscarPreferenciasNotificacao(
+  id: string,
+): Promise<PreferenciasNotificacaoDTO> {
+  return requisicao<PreferenciasNotificacaoDTO>(
+    `/usuarios/${id}/preferencias-notificacao`,
+  );
 }
 
 /**
@@ -861,12 +960,15 @@ export async function buscarPreferenciasNotificacao(id: string): Promise<Prefere
  */
 export async function atualizarPreferenciasNotificacao(
   id: string,
-  preferencias: PreferenciasNotificacaoDTO
+  preferencias: PreferenciasNotificacaoDTO,
 ): Promise<PreferenciasNotificacaoDTO> {
-  return requisicao<PreferenciasNotificacaoDTO>(`/usuarios/${id}/preferencias-notificacao`, {
-    method: 'PUT',
-    body: JSON.stringify(preferencias),
-  });
+  return requisicao<PreferenciasNotificacaoDTO>(
+    `/usuarios/${id}/preferencias-notificacao`,
+    {
+      method: "PUT",
+      body: JSON.stringify(preferencias),
+    },
+  );
 }
 
 // ==================== Painel (Dashboard) ====================
@@ -889,7 +991,7 @@ export interface PainelResumoDTO {
 
 /** GET /lojista/painel */
 export async function buscarPainel(): Promise<PainelResumoDTO> {
-  return requisicao<PainelResumoDTO>('/lojista/painel');
+  return requisicao<PainelResumoDTO>("/lojista/painel");
 }
 
 // ==================== Financeiro ====================
@@ -899,7 +1001,7 @@ export async function buscarPainel(): Promise<PainelResumoDTO> {
 // como o mock antigo do frontend tinha — por isso o tipo aqui é o contrato
 // real da API, não o antigo `ResumoFinanceiro` de `types/index.ts`.
 
-export type PeriodoFinanceiro = 'HOJE' | 'SETE_DIAS' | 'TRINTA_DIAS';
+export type PeriodoFinanceiro = "HOJE" | "SETE_DIAS" | "TRINTA_DIAS";
 
 export interface ResumoFinanceiroDTO {
   faturamentoPeriodo: number;
@@ -949,7 +1051,9 @@ export interface FinanceiroDTO {
 }
 
 /** GET /lojista/financeiro?periodo=HOJE|SETE_DIAS|TRINTA_DIAS */
-export async function buscarFinanceiro(periodo: PeriodoFinanceiro): Promise<FinanceiroDTO> {
+export async function buscarFinanceiro(
+  periodo: PeriodoFinanceiro,
+): Promise<FinanceiroDTO> {
   return requisicao<FinanceiroDTO>(`/lojista/financeiro?periodo=${periodo}`);
 }
 
@@ -958,12 +1062,13 @@ export async function buscarFinanceiro(periodo: PeriodoFinanceiro): Promise<Fina
 // WebSocket — ver services/chatSocket.ts. Isso aqui é só o histórico e a
 // listagem de conversas.
 
-export type RemetenteTipo = 'CLIENTE' | 'LOJA';
+export type RemetenteTipo = "CLIENTE" | "LOJA" | "ENTREGADOR";
 
 export interface ConversaResumoDTO {
   id: string;
   clienteId: string;
   clienteNome: string;
+  participanteTipo?: "CLIENTE" | "ENTREGADOR";
   ultimaMensagemPreview: string | null;
   ultimaMensagemEm: string;
   naoLidas: number;
@@ -980,7 +1085,9 @@ export interface MensagemDTO {
 
 /** GET /lojista/conversas */
 export async function listarConversas(): Promise<ConversaResumoDTO[]> {
-  const pagina = await requisicao<PaginaSpring<ConversaResumoDTO>>('/lojista/conversas?size=100');
+  const pagina = await requisicao<PaginaSpring<ConversaResumoDTO>>(
+    "/lojista/conversas?size=100",
+  );
   return pagina.content ?? [];
 }
 
@@ -989,19 +1096,26 @@ export async function listarConversas(): Promise<ConversaResumoDTO[]> {
  * O componente de chat deve inverter a ordem antes de renderizar (mais
  * antiga no topo), já que o backend devolve DESC por enviadaEm.
  */
-export async function listarMensagens(conversaId: string, params?: { page?: number; size?: number }): Promise<MensagemDTO[]> {
+export async function listarMensagens(
+  conversaId: string,
+  params?: { page?: number; size?: number },
+): Promise<MensagemDTO[]> {
   const search = new URLSearchParams();
-  search.set('size', String(params?.size ?? 30));
-  if (params?.page !== undefined) search.set('page', String(params.page));
+  search.set("size", String(params?.size ?? 30));
+  if (params?.page !== undefined) search.set("page", String(params.page));
 
-  const pagina = await requisicao<PaginaSpring<MensagemDTO>>(`/lojista/conversas/${conversaId}/mensagens?${search.toString()}`);
+  const pagina = await requisicao<PaginaSpring<MensagemDTO>>(
+    `/lojista/conversas/${conversaId}/mensagens?${search.toString()}`,
+  );
   return pagina.content ?? [];
 }
 
 /** PATCH /lojista/conversas/{id}/lida */
-export async function marcarConversaComoLida(conversaId: string): Promise<void> {
+export async function marcarConversaComoLida(
+  conversaId: string,
+): Promise<void> {
   return requisicao<void>(`/lojista/conversas/${conversaId}/lida`, {
-    method: 'PATCH',
+    method: "PATCH",
   });
 }
 
@@ -1018,14 +1132,31 @@ export async function buscarCep(cep: string): Promise<{
   localidade: string;
   uf: string;
 }> {
-  const cepLimpo = cep.replace(/\D/g, '');
+  const cepLimpo = cep.replace(/\D/g, "");
   const resposta = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
 
   if (!resposta.ok) {
-    throw new Error('Erro ao buscar CEP');
+    throw new Error("Erro ao buscar CEP");
   }
 
   return resposta.json();
 }
 
 export { requisicao };
+
+/** Confirmação do novo telefone conforme o contrato atual do backend. */
+export function enviarCodigoTelefone(telefone: string): Promise<void> {
+  return requisicao("/verificacao-telefone/enviar-codigo", {
+    method: "POST",
+    body: JSON.stringify({ telefone }),
+  });
+}
+export function atualizarTelefoneConfirmado(
+  telefone: string,
+  codigo: string,
+): Promise<void> {
+  return requisicao("/usuarios/me/telefone", {
+    method: "PUT",
+    body: JSON.stringify({ telefone, codigo }),
+  });
+}

@@ -3,9 +3,10 @@
 // Cargo exibido no painel. `cliente` é o estado temporário de uma conta
 // recém-criada que ainda não cadastrou sua loja; ele não recebe permissões
 // do painel e só pode entrar no onboarding.
-export type Cargo = 'administrador' | 'gerente' | 'atendente' | 'cliente';
+export type Cargo = "administrador" | "gerente" | "atendente" | "cliente";
 
 export interface Usuario {
+  papel?: string;
   id: string;
   nomeCompleto: string;
   email: string;
@@ -140,7 +141,13 @@ export interface Funcionario {
 
 // ==================== Pedidos ====================
 
-export type StatusPedido = 'PENDENTE' | 'PAGO' | 'PREPARANDO' | 'SAIU_ENTREGA' | 'ENTREGUE' | 'CANCELADO';
+export type StatusPedido =
+  | "PENDENTE"
+  | "PAGO"
+  | "PREPARANDO"
+  | "SAIU_ENTREGA"
+  | "ENTREGUE"
+  | "CANCELADO";
 
 export interface ItemPedido {
   produtoId: string;
@@ -222,7 +229,7 @@ export interface ResumoFinanceiro {
   taxaCancelamento: number;
 }
 
-export type FiltroPeriodo = 'hoje' | '7dias' | '30dias' | 'personalizado';
+export type FiltroPeriodo = "hoje" | "7dias" | "30dias" | "personalizado";
 
 // ==================== Navegação ====================
 

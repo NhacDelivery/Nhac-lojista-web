@@ -1,22 +1,22 @@
-import { useLoja } from '../../contexts/LojaContext';
-import Avatar from '../ui/Avatar';
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  MessageCircle, 
-  Users, 
-  BarChart3, 
+import { useLoja } from "../../contexts/LojaContext";
+import Avatar from "../ui/Avatar";
+import React from "react";
+import { NavLink } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Package,
+  MessageCircle,
+  Users,
+  BarChart3,
   ClipboardList,
   Settings,
   X,
   ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
-import { useAutenticacao } from '../../hooks/useAutenticacao';
-import { Cargo } from '../../types';
-import estilos from './BarraLateral.module.css';
+  ChevronRight,
+} from "lucide-react";
+import { useAutenticacao } from "../../hooks/useAutenticacao";
+import { Cargo } from "../../types";
+import estilos from "./BarraLateral.module.css";
 
 interface NavItem {
   rotulo: string;
@@ -26,13 +26,48 @@ interface NavItem {
 }
 
 const itensNavegacao: NavItem[] = [
-  { rotulo: 'Painel', caminho: '/', icone: LayoutDashboard, cargos: ['administrador', 'gerente'] },
-  { rotulo: 'Pedidos', caminho: '/pedidos', icone: ClipboardList, cargos: ['administrador', 'gerente', 'atendente'] },
-  { rotulo: 'Produtos', caminho: '/produtos', icone: Package, cargos: ['administrador', 'gerente'] },
-  { rotulo: 'Chat', caminho: '/chat', icone: MessageCircle, cargos: ['administrador', 'gerente', 'atendente'] },
-  { rotulo: 'Funcionários', caminho: '/funcionarios', icone: Users, cargos: ['administrador'] },
-  { rotulo: 'Financeiro', caminho: '/financeiro', icone: BarChart3, cargos: ['administrador'] },
-  { rotulo: 'Configurações', caminho: '/configuracoes', icone: Settings, cargos: ['administrador'] },
+  {
+    rotulo: "Painel",
+    caminho: "/",
+    icone: LayoutDashboard,
+    cargos: ["administrador", "gerente"],
+  },
+  {
+    rotulo: "Pedidos",
+    caminho: "/pedidos",
+    icone: ClipboardList,
+    cargos: ["administrador", "gerente", "atendente"],
+  },
+  {
+    rotulo: "Produtos",
+    caminho: "/produtos",
+    icone: Package,
+    cargos: ["administrador", "gerente"],
+  },
+  {
+    rotulo: "Chat",
+    caminho: "/chat",
+    icone: MessageCircle,
+    cargos: ["administrador", "gerente", "atendente"],
+  },
+  {
+    rotulo: "Funcionários",
+    caminho: "/funcionarios",
+    icone: Users,
+    cargos: ["administrador"],
+  },
+  {
+    rotulo: "Financeiro",
+    caminho: "/financeiro",
+    icone: BarChart3,
+    cargos: ["administrador"],
+  },
+  {
+    rotulo: "Configurações",
+    caminho: "/configuracoes",
+    icone: Settings,
+    cargos: ["administrador"],
+  },
 ];
 
 interface BarraLateralProps {
@@ -42,21 +77,27 @@ interface BarraLateralProps {
   onToggleRecolher?: () => void;
 }
 
-const BarraLateral: React.FC<BarraLateralProps> = ({ 
-  abertaMobile = false, 
+const BarraLateral: React.FC<BarraLateralProps> = ({
+  abertaMobile = false,
   onFechar,
   recolhida = false,
-  onToggleRecolher
+  onToggleRecolher,
 }) => {
   const { usuario } = useAutenticacao();
   const { loja } = useLoja();
 
   if (!usuario) return null;
 
-  const itensFiltrados = itensNavegacao.filter(item => item.cargos.includes(usuario.cargo));
+  const itensFiltrados = itensNavegacao.filter(
+    (item) =>
+      item.cargos.includes(usuario.cargo) &&
+      !(usuario.papel === "FUNCIONARIO" && item.caminho === "/funcionarios"),
+  );
 
   return (
-    <aside className={`${estilos.barraLateral} ${abertaMobile ? estilos.aberta : ''} ${recolhida ? estilos.recolhida : ''}`}>
+    <aside
+      className={`${estilos.barraLateral} ${abertaMobile ? estilos.aberta : ""} ${recolhida ? estilos.recolhida : ""}`}
+    >
       <div className={estilos.cabecalho}>
         <h1 className={estilos.logo}>
           <img
@@ -69,12 +110,16 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
         <div className={estilos.acoesCabecalho}>
           {/* Botão de recolher — visível apenas no desktop */}
           {onToggleRecolher && (
-            <button 
-              className={estilos.botaoRecolher} 
+            <button
+              className={estilos.botaoRecolher}
               onClick={onToggleRecolher}
-              title={recolhida ? 'Expandir menu' : 'Recolher menu'}
+              title={recolhida ? "Expandir menu" : "Recolher menu"}
             >
-              {recolhida ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              {recolhida ? (
+                <ChevronRight size={20} />
+              ) : (
+                <ChevronLeft size={20} />
+              )}
             </button>
           )}
           {/* Botão de fechar — visível apenas no mobile quando aberto */}
@@ -90,10 +135,12 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
         {itensFiltrados.map((item) => {
           const Icone = item.icone;
           return (
-            <NavLink 
-              key={item.caminho} 
+            <NavLink
+              key={item.caminho}
               to={item.caminho}
-              className={({ isActive }) => `${estilos.link} ${isActive ? estilos.ativo : ''}`}
+              className={({ isActive }) =>
+                `${estilos.link} ${isActive ? estilos.ativo : ""}`
+              }
               onClick={() => onFechar && onFechar()}
               title={recolhida ? item.rotulo : undefined}
             >
@@ -106,7 +153,11 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
 
       <div className={estilos.rodape}>
         <div className={estilos.perfil}>
-          <Avatar nome={loja?.nome || usuario.nomeCompleto} fotoUrl={loja?.imagemUrl} tamanho="pequeno" />
+          <Avatar
+            nome={loja?.nome || usuario.nomeCompleto}
+            fotoUrl={loja?.imagemUrl}
+            tamanho="pequeno"
+          />
           <div className={estilos.infoUsuario}>
             <span className={estilos.nome}>{usuario.nomeCompleto}</span>
             <span className={estilos.seletorCargo}>
