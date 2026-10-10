@@ -221,3 +221,31 @@ test("catálogo carrega a próxima página e a busca mostra estado sem resultado
     await api.dispose();
   }
 });
+
+test('cria produto inativo pela tela, mantém após recarregar e permite reativação', async ({ page }) => {
+  const nome = `Inativo ${identificador()}`;
+  await page.goto('/produtos/novo');
+  await page.getByLabel(/Nome do Produto/).fill(nome);
+  await page.getByLabel(/Categoria/).selectOption('Hambúrgueres');
+  await page.getByLabel(/^Preço/).fill('15,00');
+  await page.getByRole('switch', { name: 'Produto Ativo' }).uncheck();
+  const gravacao = page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith('/produtos'));
+  await page.getByRole('button', { name: 'Salvar Produto' }).click();
+  const response = await gravacao;
+  expect(response.status()).toBe(201);
+  const { id } = await response.json();
+  const api = await apiAutenticada();
+  try {
+    expect((await (await api.get(`lojista/produtos/${id}`)).json()).ativo).toBe(false);
+    expect((await api.get(`produtos/${id}`)).status()).toBe(404);
+    await page.goto(`/produtos/${id}`);
+    await expect(page.getByRole('switch', { name: 'Produto Ativo' })).not.toBeChecked();
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Produto Ativo' })).not.toBeChecked();
+    await page.getByRole('switch', { name: 'Produto Ativo' }).check();
+    await page.getByRole('button', { name: 'Salvar Produto' }).click();
+    await expect(page).toHaveURL(/\/produtos$/);
+    expect((await (await api.get(`lojista/produtos/${id}`)).json()).ativo).toBe(true);
+    expect((await api.get(`produtos/${id}`)).status()).toBe(200);
+  } finally { await api.dispose(); }
+});

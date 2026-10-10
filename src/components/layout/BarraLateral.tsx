@@ -91,7 +91,7 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
   const itensFiltrados = itensNavegacao.filter(
     (item) =>
       item.cargos.includes(usuario.cargo) &&
-      !(usuario.papel === "FUNCIONARIO" && item.caminho === "/funcionarios"),
+      !(usuario.papel === "FUNCIONARIO" && ["/funcionarios", "/configuracoes"].includes(item.caminho)),
   );
 
   return (

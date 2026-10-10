@@ -117,6 +117,9 @@
 }
 
 .adicionaisItem {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
   color: var(--nhac-texto-claro);
   font-size: 0.8125rem;
 }

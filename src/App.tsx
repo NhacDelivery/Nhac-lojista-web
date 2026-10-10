@@ -189,7 +189,7 @@ function App() {
               <Route
                 path="/configuracoes"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
+                  <RotaProtegidaComLoja somenteDono cargosPermitidos={["administrador"]}>
                     <PaginaInformacaoLoja />
                   </RotaProtegidaComLoja>
                 }
@@ -197,7 +197,7 @@ function App() {
               <Route
                 path="/configuracoes/editar"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
+                  <RotaProtegidaComLoja somenteDono cargosPermitidos={["administrador"]}>
                     <PaginaEditarInfoLoja />
                   </RotaProtegidaComLoja>
                 }
@@ -213,7 +213,7 @@ function App() {
               <Route
                 path="/configuracoes/endereco"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
+                  <RotaProtegidaComLoja somenteDono cargosPermitidos={["administrador"]}>
                     <PaginaEnderecoLoja />
                   </RotaProtegidaComLoja>
                 }
@@ -221,7 +221,7 @@ function App() {
               <Route
                 path="/configuracoes/pagamentos"
                 element={
-                  <RotaProtegidaComLoja cargosPermitidos={["administrador"]}>
+                  <RotaProtegidaComLoja somenteDono cargosPermitidos={["administrador"]}>
                     <PaginaFormasPagamento />
                   </RotaProtegidaComLoja>
                 }

@@ -631,9 +631,10 @@ export async function buscarProduto(id: string): Promise<ProdutoLojistaDTO> {
 export async function criarProduto(
   dados: ProdutoLojistaDTO,
 ): Promise<{ id: string }> {
+  const { ativo, ...campos } = dados;
   return requisicao<{ id: string }>("/produtos", {
     method: "POST",
-    body: JSON.stringify(dados),
+    body: JSON.stringify({ ...campos, isAtivo: ativo }),
   });
 }
 
@@ -732,6 +733,7 @@ export interface ItemPedidoDTO {
   imagemUrl?: string;
   preco: number;
   quantidade: number;
+  adicionais?: string[];
 }
 
 /**
@@ -1013,6 +1015,7 @@ export interface ResumoFinanceiroDTO {
 export interface PedidosPorDiaSemanaDTO {
   diaSemana: string;
   quantidade: number;
+  adicionais?: string[];
 }
 
 export interface VendasPorCategoriaDTO {
@@ -1037,6 +1040,7 @@ export interface ProdutoMaisVendidoDTO {
 export interface PedidosPorHoraDTO {
   hora: number;
   quantidade: number;
+  adicionais?: string[];
 }
 
 export interface FinanceiroDTO {

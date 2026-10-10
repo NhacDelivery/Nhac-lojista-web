@@ -59,7 +59,7 @@ export async function produto(
   expect(response.status()).toBe(201);
   return response.json();
 }
-export async function novoPedido() {
+export async function novoPedido(item?: { produtoId: string; nome: string; adicionais?: string[] }) {
   const cliente = await apiAutenticada("e2e.pedido@nhac.local");
   try {
     const response = await cliente.post("pedidos", {
@@ -79,7 +79,7 @@ export async function novoPedido() {
           longitude: -46.633308,
         },
         itens: [
-          { produtoId: "e2e-produto-001", nome: "Produto E2E", quantidade: 1 },
+          { ...(item ?? { produtoId: "e2e-produto-001", nome: "Produto E2E" }), quantidade: 1 },
         ],
       },
     });

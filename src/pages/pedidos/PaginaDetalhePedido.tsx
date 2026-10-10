@@ -231,6 +231,13 @@ const PaginaDetalhePedido = () => {
                         <span className={estilos.nomeItem}>
                           {item.quantidade}x {item.nome}
                         </span>
+                        {item.adicionais && item.adicionais.length > 0 && (
+                          <ul className={estilos.adicionaisItem} aria-label={`Adicionais de ${item.nome}`}>
+                            {item.adicionais.map((adicional, indice) => (
+                              <li key={`${indice}-${adicional}`}>{adicional}</li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                       <span className={estilos.precoItem}>
                         {formatarMoeda(item.preco * item.quantidade)}

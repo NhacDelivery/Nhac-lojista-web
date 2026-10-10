@@ -114,7 +114,7 @@ for (const cargo of ["Atendente", "Administrador"]) {
       await page.goto("/pedidos");
       await expect(page.getByTestId("e2e.orders.root")).toBeVisible();
       for (const nome of cargo === "Administrador"
-        ? ["Funcionários"]
+        ? ["Funcionários", "Configurações"]
         : ["Funcionários", "Financeiro", "Configurações"]) {
         await expect(
           page.getByRole("link", { name: nome, exact: true }),
@@ -129,7 +129,7 @@ for (const cargo of ["Atendente", "Administrador"]) {
         ).toHaveCount(0);
       }
       for (const caminho of cargo === "Administrador"
-        ? ["/funcionarios/novo"]
+        ? ["/funcionarios/novo", "/configuracoes"]
         : ["/funcionarios/novo", "/financeiro", "/configuracoes"]) {
         await page.goto(caminho);
         await expect(
@@ -141,6 +141,9 @@ for (const cargo of ["Atendente", "Administrador"]) {
       }
       const staff = await apiAutenticada(email);
       try {
+        expect((await staff.get('lojista/funcionarios')).status()).toBe(403);
+        expect((await staff.get('lojista/produtos')).status()).toBe(cargo === 'Administrador' ? 200 : 403);
+        expect((await staff.get('lojista/financeiro')).status()).toBe(cargo === 'Administrador' ? 200 : 403);
         expect(
           (
             await staff.post("lojista/funcionarios", {

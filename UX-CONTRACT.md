@@ -42,3 +42,16 @@ A referência desta revisão é a `main` de `NhacDelivery/backend-nhac`, commit 
 Os campos compartilhados associam rótulo, erro e controle; reservam espaço para a mensagem de validação para que uma validação no blur não mova o botão durante um clique. Formas de pagamento podem ser alteradas com teclado pelo checkbox nomeado.
 
 A suíte usa Chromium, REST, WebSocket e MariaDB isolados. SMS, e-mail, storage e provedores financeiros externos continuam no modo mock do perfil E2E. Uma falha 503 do painel é injetada somente no cenário de recuperação; a tentativa seguinte consulta a API real. Consulte `docs/TESTES-INTEGRACAO.md` para execução e limites de cobertura.
+
+## Permissões e itens do pedido
+
+As escolhas de `itens[].adicionais` são snapshots do backend e aparecem abaixo do item, sem recalcular preços. Pedidos antigos sem adicionais continuam legíveis. A criação de produto envia `isAtivo`; `false` mantém o produto fora do catálogo público desde a criação.
+
+| Área | Dono / ADMIN | Funcionário Administrador | Gerente | Atendente / cargo desconhecido |
+| --- | --- | --- | --- | --- |
+| Pedidos e chat | Sim | Sim | Sim | Sim |
+| Catálogo, painel e abertura | Sim | Sim | Sim | Não |
+| Financeiro | Sim | Sim | Não | Não |
+| Equipe e configuração da loja | Sim | Não | Não | Não |
+
+A API aplica as restrições com o cargo atualizado do banco, inclusive após rebaixamento com o mesmo token. O vínculo da loja continua obrigatório. Configurações da própria conta preservam a autorização individual já existente.

@@ -8,7 +8,19 @@ test.beforeEach(() => {
 test("recebe um pedido real, inicia preparo e impede concluir a entrega pelo lojista", async ({
   page,
 }) => {
-  const pedido = await novoPedido();
+  const lojista = await apiAutenticada();
+  let item;
+  try {
+    const criado = await lojista.post('produtos', { data: {
+      nome: 'Produto E2E', preco: 25, categoriaMenu: 'Hambúrgueres', estoque: 10,
+      adicionais: [{ nome: 'Molhos', obrigatorio: false, minimo: 0, maximo: 1, itens: [{ nome: 'Barbecue', preco: 2.5 }] }],
+    } });
+    expect(criado.status()).toBe(201);
+    const { id } = await criado.json();
+    const salvo = await (await lojista.get(`lojista/produtos/${id}`)).json();
+    item = { produtoId: id, nome: 'Produto E2E', adicionais: [salvo.adicionais[0].itens[0].id] };
+  } finally { await lojista.dispose(); }
+  const pedido = await novoPedido(item);
   await entrar(page);
   await page.goto("/pedidos");
   const cartao = page.getByTestId(`e2e.order.${pedido.id}`);
@@ -19,6 +31,9 @@ test("recebe um pedido real, inicia preparo e impede concluir a entrega pelo loj
   await cartao.click();
   await expect(page.getByText("1x Produto E2E")).toBeVisible();
   await expect(page.getByText("Integração painel")).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Adicionais de Produto E2E' })).toContainText('Molhos: Barbecue');
+  await page.reload();
+  await expect(page.getByRole('list', { name: 'Adicionais de Produto E2E' })).toContainText('Molhos: Barbecue');
   await page.getByTestId("e2e.order.advance").click();
   await page.getByTestId("confirmation-submit").click();
   await expect(page.getByTestId("e2e.order.status")).toContainText("Pago");

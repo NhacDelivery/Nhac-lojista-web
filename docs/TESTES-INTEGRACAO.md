@@ -1,6 +1,6 @@
 # Testes de integração do painel lojista
 
-A suíte Playwright usa o painel completo e o backend da main, com MariaDB exclusivo para E2E. Não substitui serviços de domínio por mocks de componentes. As mutações são verificadas pela tela, por consultas REST independentes e/ou após recarregar a página.
+A suíte Playwright usa o painel completo e o backend do PR #146 (870b12bbabbd7b15b31e01735ca272f500336842), derivado da main, com MariaDB exclusivo para E2E. Não substitui serviços de domínio por mocks de componentes. As mutações são verificadas pela tela, por consultas REST independentes e/ou após recarregar a página.
 
 ## Cobertura
 
@@ -30,3 +30,5 @@ Também execute `npm run lint`, `CI=true npm test -- --watchAll=false --runInBan
 ## Limites
 
 Não são exercitados envios reais de SMS/e-mail, pagamento real, Firebase ou coleta por um entregador real. O perfil E2E usa os mocks oficiais do backend para esses provedores. O cadastro completo com e-mail verificado e a recuperação bem-sucedida de senha ainda não estão cobertos; os cenários de validação e rejeição estão. Os testes não efetuam mudanças em produção.
+
+Nesta correção, o workflow usa o commit do PR #146 porque criação inativa e RBAC dependem dele. Após integrar o backend, retornar o checkout do workflow à `main`. Os cenários incluem snapshot dos adicionais após recarga, criação inicialmente inativa e 403 por cargo via REST.
