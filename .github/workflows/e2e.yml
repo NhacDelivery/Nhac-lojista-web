@@ -87,7 +87,7 @@ jobs:
           CI: "true"
         run: |
           npm run lint
-          npx tsc --noEmit --strict --target ES2020 --module commonjs --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0 e2e/*.ts playwright.config.ts
+          npx tsc --project tsconfig.e2e.json
           npm test -- --watchAll=false --runInBand
           npm run build
 
