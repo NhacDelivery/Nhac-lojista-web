@@ -2,7 +2,7 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { StatusPedido } from '../types';
 
-import { WS_BASE_URL } from './endpoints';
+import { WS_BASE_URL, WS_OPTIONS } from './endpoints';
 
 const STATUS_VALIDOS = new Set<StatusPedido>([
   'PENDENTE',
@@ -29,7 +29,7 @@ export function conectarStatusPedidoSocket(
   let assinatura: StompSubscription | undefined;
 
   const client = new Client({
-    webSocketFactory: () => new SockJS(WS_BASE_URL) as unknown as WebSocket,
+    webSocketFactory: () => new SockJS(WS_BASE_URL, null, WS_OPTIONS) as unknown as WebSocket,
     reconnectDelay: 4000,
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,
