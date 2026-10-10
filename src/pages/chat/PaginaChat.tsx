@@ -262,258 +262,241 @@ const PaginaChat = () => {
       const historico = await listarMensagens(id);
       if (ativaRef.current !== id) return;
       setMensagens((atual) => {
-        const porId = new Map([...atual, ...historico].map((m) => [m.id, …9278 tokens truncated…ratarErroApi(err);
-      setErro(
-        tratado.mensagemGeral ?? "Não foi possível carregar os funcionários.",
-      );
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
-
-  const getCorCargo = (cargo: string): "info" | "aviso" | "neutro" => {
-    switch (cargo.toLowerCase()) {
-      case "administrador":
-        return "info";
-      case "gerente":
-        return "aviso";
-      default:
-        return "neutro";
-    }
-  };
-
-  const handleExcluir = async (id: string) => {
-    try {
-      await desativarFuncionario(id);
-      setFuncionarios(
-        funcionarios.map((f) => (f.id === id ? { ...f, ativo: false } : f)),
-      );
-      mostrarToast("Funcionário desativado.");
+        const porId = new Map([...atual, ...historico].map((m) => [m.id, m]));
+        return [...porId.values()].sort((a, b) =>
+          a.enviadaEm.localeCompare(b.enviadaEm),
+        );
+      });
+      historico.forEach(confirmar);
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(
-        tratado.mensagemGeral ?? "Não foi possível desativar o funcionário.",
+        tratado.mensagemGeral ?? "Não foi possível carregar o histórico.",
       );
     } finally {
-      setConfirmandoExclusao(null);
+      if (ativaRef.current === id) setCarregandoMensagens(false);
     }
+
+    await marcarLida(id);
   };
 
-  const handleReativar = async (id: string) => {
-    try {
-      await reativarFuncionario(id);
-      setFuncionarios(
-        funcionarios.map((f) => (f.id === id ? { ...f, ativo: true } : f)),
-      );
-      mostrarToast("Funcionário reativado.");
-    } catch (err) {
-      const tratado = tratarErroApi(err);
-      mostrarToast(
-        tratado.mensagemGeral ?? "Não foi possível reativar o funcionário.",
-      );
+  const handleEnviar = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!novaMensagem.trim() || !conversaAtiva || !socketRef.current) return;
+    const id = conversaAtiva.id;
+    const pendente = pendentesRef.current[id];
+    if (pendente && !pendente.incerto) return;
+    const texto = pendente?.texto ?? novaMensagem.trim();
+    const identificador = pendente?.id ?? crypto.randomUUID();
+    if (
+      !atualizarPendentes({
+        ...pendentesRef.current,
+        [id]: { id: identificador, texto, incerto: true },
+      })
+    )
+      return;
+    if (!socketRef.current.enviarMensagem(id, texto, identificador)) {
+      mostrarToast("Sem conexão com o chat. Tente novamente quando conectar.");
+      return;
     }
+    atualizarPendentes({
+      ...pendentesRef.current,
+      [id]: { id: identificador, texto, incerto: false },
+    });
+    clearTimeout(prazosRef.current[id]);
+    prazosRef.current[id] = setTimeout(() => {
+      const atual = pendentesRef.current[id];
+      if (atual?.id === identificador)
+        atualizarPendentes({
+          ...pendentesRef.current,
+          [id]: { ...atual, incerto: true },
+        });
+    }, 15000);
+  };
+
+  const usarMensagemRapida = (texto: string) => {
+    if (conversaAtivaId && pendentesRef.current[conversaAtivaId]) return;
+    if (conversaAtivaId) rascunhosRef.current[conversaAtivaId] = texto;
+    setNovaMensagem(texto);
   };
 
   return (
-    <LayoutPagina titulo="Funcionários">
+    <LayoutPagina titulo="Chat">
       <div className={estilos.container}>
-        <header className={estilos.cabecalho}>
-          <h2 className={estilos.titulo}>Equipe</h2>
-          <Botao
-            onClick={() => navigate("/funcionarios/novo")}
-            icone={<Plus size={20} />}
-          >
-            Novo funcionário
-          </Botao>
-        </header>
-
-        {carregando ? (
-          <p
-            style={{
-              padding: "2rem",
-              textAlign: "center",
-              color: "var(--nhac-texto-claro)",
-            }}
-          >
-            Carregando...
-          </p>
-        ) : erro ? (
-          <div
-            style={{
-              padding: "2rem",
-              textAlign: "center",
-              color: "var(--nhac-texto-claro)",
-            }}
-          >
-            <p>{erro}</p>
-            <Botao variante="secundario" onClick={carregar}>
-              Tentar novamente
-            </Botao>
-          </div>
-        ) : (
-          <Cartao className={estilos.tabelaCartao}>
-            <div className={estilos.responsivoTabela}>
-              <table className={estilos.tabela}>
-                <thead>
-                  <tr>
-                    <th>Funcionário</th>
-                    <th>Contato</th>
-                    <th>Cargo</th>
-                    <th>Status</th>
-                    <th>Data de Cadastro</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {funcionarios.length === 0 ? (
-                    <tr>
-                      <td colSpan={6}>Nenhum funcionário cadastrado ainda.</td>
-                    </tr>
-                  ) : (
-                    funcionarios.map((func) => (
-                      <tr key={func.id}>
-                        <td>
-                          <div className={estilos.infoUsuario}>
-                            <Avatar
-                              nome={func.nomeCompleto}
-                              fotoUrl={func.fotoUrl}
-                              tamanho="pequeno"
-                            />
-                            <span className={estilos.nome}>
-                              {func.nomeCompleto}
-                            </span>
-                          </div>
-                        </td>
-                        <td>
-                          <div className={estilos.contato}>
-                            <span className={estilos.email}>{func.email}</span>
-                            <span className={estilos.telefone}>
-                              {func.telefone}
-                            </span>
-                          </div>
-                        </td>
-                        <td>
-                          <Emblema variante={getCorCargo(func.cargo)}>
-                            {func.cargo}
-                          </Emblema>
-                        </td>
-                        <td>
-                          <Emblema variante={func.ativo ? "sucesso" : "erro"}>
-                            {func.ativo ? "Ativo" : "Inativo"}
-                          </Emblema>
-                        </td>
-                        <td>{formatarData(func.dataCadastro)}</td>
-                        <td>
-                          <div className={estilos.acoes}>
-                            <Botao
-                              aria-label={`Editar ${func.nomeCompleto}`}
-                              variante="fantasma"
-                              icone={<Edit2 size={18} />}
-                              onClick={() =>
-                                navigate(`/funcionarios/${func.id}`)
-                              }
-                            />
-                            {func.ativo ? (
-                              <Botao
-                                aria-label={`Desativar ${func.nomeCompleto}`}
-                                variante="perigo"
-                                icone={<Trash2 size={18} />}
-                                onClick={() => setConfirmandoExclusao(func.id)}
-                              />
-                            ) : (
-                              <Botao
-                                aria-label={`Reativar ${func.nomeCompleto}`}
-                                variante="secundario"
-                                icone={<RotateCcw size={18} />}
-                                onClick={() => handleReativar(func.id)}
-                              />
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className={estilos.listaMobile}>
-              {funcionarios.map((func) => (
-                <div key={func.id} className={estilos.cartaoMobile}>
-                  <div className={estilos.cabecalhoMobile}>
-                    <div className={estilos.infoUsuario}>
-                      <Avatar
-                        nome={func.nomeCompleto}
-                        fotoUrl={func.fotoUrl}
-                        tamanho="medio"
-                      />
-                      <div>
-                        <div className={estilos.nome}>{func.nomeCompleto}</div>
-                        <div className={estilos.email}>{func.email}</div>
-                      </div>
-                    </div>
+        <div
+          className={`${estilos.listaConversas} ${conversaAtivaId ? estilos.esconderMobile : ""}`}
+        >
+          {carregandoConversas ? (
+            <p style={{ padding: "1rem", color: "var(--nhac-texto-claro)" }}>
+              Carregando conversas...
+            </p>
+          ) : conversas.length === 0 ? (
+            <p style={{ padding: "1rem", color: "var(--nhac-texto-claro)" }}>
+              Nenhuma conversa ainda.
+            </p>
+          ) : (
+            conversas.map((conversa) => (
+              <button
+                type="button"
+                key={conversa.id}
+                className={`${estilos.itemConversa} ${conversaAtivaId === conversa.id ? estilos.ativo : ""}`}
+                onClick={() => handleSelecionarConversa(conversa.id)}
+                aria-current={
+                  conversaAtivaId === conversa.id ? "true" : undefined
+                }
+              >
+                <Avatar nome={conversa.clienteNome} tamanho="medio" />
+                <div className={estilos.infoConversa}>
+                  <div className={estilos.linhaTopo}>
+                    <span className={estilos.nomeCliente}>
+                      {conversa.clienteNome}
+                    </span>
+                    <span className={estilos.tempo}>
+                      {formatarData(conversa.ultimaMensagemEm).split(" ")[0]}
+                    </span>
                   </div>
-                  <div className={estilos.corpoMobile}>
-                    <div className={estilos.detalheMobile}>
-                      <span className={estilos.rotulo}>Cargo:</span>
-                      <Emblema variante={getCorCargo(func.cargo)}>
-                        {func.cargo}
-                      </Emblema>
-                    </div>
-                    <div className={estilos.detalheMobile}>
-                      <span className={estilos.rotulo}>Status:</span>
-                      <Emblema variante={func.ativo ? "sucesso" : "erro"}>
-                        {func.ativo ? "Ativo" : "Inativo"}
-                      </Emblema>
-                    </div>
-                    <div className={estilos.acoesMobile}>
-                      <Botao
-                        variante="secundario"
-                        onClick={() => navigate(`/funcionarios/${func.id}`)}
-                      >
-                        Editar
-                      </Botao>
-                      {func.ativo ? (
-                        <Botao
-                          variante="perigo"
-                          onClick={() => setConfirmandoExclusao(func.id)}
-                        >
-                          Excluir
-                        </Botao>
-                      ) : (
-                        <Botao
-                          variante="secundario"
-                          onClick={() => handleReativar(func.id)}
-                        >
-                          Reativar
-                        </Botao>
-                      )}
-                    </div>
+                  <div className={estilos.linhaBase}>
+                    <span className={estilos.previa}>
+                      {lerReferenciaProduto(
+                        conversa.ultimaMensagemPreview ?? "",
+                      )?.nome ??
+                        conversa.ultimaMensagemPreview?.split("\n")[0] ??
+                        "Sem mensagens ainda"}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </Cartao>
-        )}
-      </div>
+                {conversa.naoLidas > 0 && (
+                  <div className={estilos.badge}>{conversa.naoLidas}</div>
+                )}
+              </button>
+            ))
+          )}
+        </div>
 
-      <ModalConfirmacao
-        aberto={confirmandoExclusao !== null}
-        titulo="Desativar funcionário"
-        mensagem="Isso bloqueia o login desse funcionário imediatamente. Tem certeza?"
-        textoBotaoConfirmar="Desativar"
-        varianteBotaoConfirmar="perigo"
-        aoConfirmar={() =>
-          confirmandoExclusao && handleExcluir(confirmandoExclusao)
-        }
-        aoCancelar={() => setConfirmandoExclusao(null)}
-      />
+        <div
+          className={`${estilos.areaChat} ${!conversaAtivaId ? estilos.esconderMobile : ""}`}
+        >
+          {conversaAtiva ? (
+            <>
+              <header className={estilos.cabecalhoChat}>
+                <button
+                  type="button"
+                  aria-label="Voltar às conversas"
+                  className={estilos.voltarMobile}
+                  onClick={() => setConversaAtivaId(null)}
+                >
+                  <ArrowLeft size={24} />
+                </button>
+                <Avatar nome={conversaAtiva.clienteNome} tamanho="pequeno" />
+                <div className={estilos.cabecalhoInfo}>
+                  <h3 className={estilos.chatNome}>
+                    {conversaAtiva.clienteNome}
+                  </h3>
+                </div>
+              </header>
+
+              <div className={estilos.mensagensContainer} ref={scrollRef}>
+                {maisAntigas && (
+                  <button
+                    disabled={carregandoAntigas}
+                    onClick={() => void carregarAntigas()}
+                  >
+                    {carregandoAntigas
+                      ? "Carregando…"
+                      : "Carregar mensagens anteriores"}
+                  </button>
+                )}
+                <div className={estilos.mensagens}>
+                  {carregandoMensagens ? (
+                    <p
+                      style={{
+                        color: "var(--nhac-texto-claro)",
+                        textAlign: "center",
+                      }}
+                    >
+                      Carregando mensagens...
+                    </p>
+                  ) : (
+                    mensagens.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`${estilos.mensagemWrapper} ${msg.remetenteTipo === "LOJA" ? estilos.minhaMensagem : estilos.mensagemCliente}`}
+                      >
+                        <div className={estilos.balao}>
+                          <ConteudoMensagem conteudo={msg.conteudo} />
+                        </div>
+                        <span className={estilos.hora}>
+                          {formatarHora(msg.enviadaEm)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className={estilos.areaEnvio}>
+                <div className={estilos.mensagensRapidas}>
+                  {MENSAGENS_PRE_PRONTAS.map((msg, idx) => (
+                    <button
+                      key={idx}
+                      className={estilos.btnMensagemRapida}
+                      onClick={() => usarMensagemRapida(msg)}
+                      disabled={!!pendentes[conversaAtiva.id]}
+                    >
+                      {msg}
+                    </button>
+                  ))}
+                </div>
+                <form
+                  noValidate
+                  className={estilos.formEnvio}
+                  onSubmit={handleEnviar}
+                >
+                  <input
+                    type="text"
+                    className={estilos.inputMensagem}
+                    value={novaMensagem}
+                    onChange={(e) => {
+                      rascunhosRef.current[conversaAtiva.id] = e.target.value;
+                      setNovaMensagem(e.target.value);
+                    }}
+                    disabled={!!pendentes[conversaAtiva.id]}
+                    maxLength={4000}
+                    placeholder="Digite sua mensagem..."
+                  />
+                  <Botao
+                    type="submit"
+                    icone={<Send size={20} />}
+                    disabled={
+                      !novaMensagem.trim() ||
+                      (!!pendentes[conversaAtiva.id] &&
+                        !pendentes[conversaAtiva.id].incerto)
+                    }
+                  >
+                    {pendentes[conversaAtiva.id]?.incerto
+                      ? "Reenviar"
+                      : "Enviar"}
+                  </Botao>
+                </form>
+                {pendentes[conversaAtiva.id] && (
+                  <p role="status" className={estilos.estadoEnvio}>
+                    {pendentes[conversaAtiva.id].incerto
+                      ? "Sem confirmação. Confira a conversa ou reenvie a mesma mensagem."
+                      : "Aguardando confirmação da mensagem..."}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className={estilos.estadoVazio}>
+              <MessageSquare size={48} color="var(--nhac-borda)" />
+              <p>Selecione uma conversa para começar a falar</p>
+            </div>
+          )}
+        </div>
+      </div>
     </LayoutPagina>
   );
 };
 
-export default PaginaListaFuncionarios;
+export default PaginaChat;
