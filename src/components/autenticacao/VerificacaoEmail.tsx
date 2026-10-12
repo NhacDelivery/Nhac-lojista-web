@@ -1,3 +1,4 @@
+import AvisoFormulario from '../ui/AvisoFormulario';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail } from 'lucide-react';
@@ -138,7 +139,7 @@ export default function VerificacaoEmail({
   if (bloqueado) {
     return (
       <div className={estilos.container}>
-        <p className={estilos.descricao}>{erroGeral}</p>
+        <AvisoFormulario mensagem={erroGeral} />
         <p className={estilos.descricao}>
           Já tem uma conta?{' '}
           <Link to="/login" className={estilos.link}>
@@ -163,7 +164,7 @@ export default function VerificacaoEmail({
         Digite abaixo para confirmar seu e-mail.
       </p>
 
-      {erroGeral && <div className={estilos.erro}>{erroGeral}</div>}
+      {erroGeral && <AvisoFormulario mensagem={erroGeral} />}
 
       <div className={estilos.campoCodigo}>
         <label htmlFor="codigo-verificacao" className={estilos.rotulo}>
@@ -171,6 +172,8 @@ export default function VerificacaoEmail({
         </label>
         <input
           id="codigo-verificacao"
+          aria-invalid={erroCodigo ? true : undefined}
+          aria-describedby={erroCodigo ? "erro-codigo-verificacao" : undefined}
           ref={inputRef}
           type="text"
           inputMode="numeric"
@@ -183,7 +186,7 @@ export default function VerificacaoEmail({
           autoComplete="one-time-code"
           disabled={carregando}
         />
-        {erroCodigo && <span className={estilos.erroCampo}>{erroCodigo}</span>}
+        {erroCodigo && <span id="erro-codigo-verificacao" className={estilos.erroCampo}>{erroCodigo}</span>}
       </div>
 
       <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--nhac-texto-claro)' }}>

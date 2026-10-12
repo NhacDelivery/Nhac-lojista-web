@@ -13,7 +13,9 @@
   border-radius: var(--raio-pilula);
   padding: 0 16px;
   min-height: 52px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   position: relative;
 }
 
@@ -96,6 +98,8 @@
 }
 
 .mensagemErro {
+  display: block;
+  min-height: 16px;
   color: var(--nhac-erro);
   font-size: 12px;
   margin-left: 16px;
@@ -105,4 +109,3 @@
 .semRotulo {
   padding-top: 0;
 }
-

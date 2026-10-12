@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import estilos from './Avatar.module.css';
 
 export interface PropsAvatar {
@@ -10,6 +10,8 @@ export interface PropsAvatar {
 
 const Avatar = ({ nome, fotoUrl, tamanho = 'medio', className = '' }: PropsAvatar) => {
   const [erroImagem, setErroImagem] = useState(false);
+
+  useEffect(() => setErroImagem(false), [fotoUrl]);
 
   const obterIniciais = (nome: string) => {
     if (!nome) return '';

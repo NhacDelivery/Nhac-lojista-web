@@ -1,0 +1,9 @@
+# Correções da revisão de 09/10/2026
+
+Implementado: consultas de pedidos serializadas, loading encerrado após a consulta principal, timeout HTTP de 25 segundos, retry e aviso de atualização silenciosa sem apagar a lista; detalhe consultado após reconexão; histórico de avisos persistido por conta e loja e independente do filtro; estoque no cadastro e validação no submit; falha explícita de preferências sem habilitar valores não confirmados; leitura das mensagens recebidas na conversa aberta e atualização periódica das demais conversas; foto da loja no topo e na lateral; menu de configurações e saída; cartões de pedido/produto no chat; envio pendente guardado antes do socket e restaurado com o mesmo identificador; carregamento de mensagens antigas com preservação da rolagem; rota de edição de funcionário; respostas da loja protegidas contra troca de sessão.
+
+A API e o WebSocket usam a mesma configuração: `REACT_APP_API_URL` e, opcionalmente, `REACT_APP_WS_URL`. Sem configuração, desenvolvimento usa localhost e produção usa `https://backend-nhac.onrender.com/api/v1`, com socket em `/ws`. Para outro servidor, definir ambas no build e liberar CORS nesse servidor. Não foi observado o navegador do ambiente originalmente afetado.
+
+O E2E passa a usar `feature/chat-clientes-20261008` do backend e senha de fixture temporária por execução. Foram executados TypeScript, 13 testes unitários, incluindo consulta inicial lenta e falha de atualização silenciosa e build de produção. O E2E completo com MariaDB e navegador depende do runner correspondente.
+
+Aceitação em ambiente: abrir pedidos sob rede lenta, trocar filtro durante a consulta, desconectar/reconectar o socket e conferir o detalhe; receber pedido em outra página; ler uma mensagem e reabrir o painel; perder a confirmação de envio, atualizar a página e recuperar o mesmo identificador; alterar foto e conferir os dois avatares; testar cadastro com estoque zero, negativo, fracionado e vazio.

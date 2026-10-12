@@ -361,3 +361,4 @@
     display: block;
   }
 }
+.referenciaProduto { display: flex; gap: 12px; align-items: center; padding: 10px; background: var(--nhac-superficie, white); color: var(--nhac-texto, #5D201C); border-radius: 12px; } .referenciaProduto img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; } .textoReferencia { margin-top: 8px; white-space: pre-wrap; }

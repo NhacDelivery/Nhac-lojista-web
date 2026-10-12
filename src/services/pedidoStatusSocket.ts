@@ -2,8 +2,8 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { StatusPedido } from '../types';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL ||
-  (process.env.NODE_ENV === 'production' ? `${window.location.origin}/ws` : 'http://localhost:8080/ws');
+import { WS_BASE_URL, WS_OPTIONS } from './endpoints';
+
 const STATUS_VALIDOS = new Set<StatusPedido>([
   'PENDENTE',
   'PAGO',
@@ -24,11 +24,12 @@ export interface PedidoStatusSocket {
 export function conectarStatusPedidoSocket(
   pedidoId: string,
   aoAtualizar: (status: StatusPedido) => void,
+  aoReconectar?: () => void,
 ): PedidoStatusSocket {
   let assinatura: StompSubscription | undefined;
 
   const client = new Client({
-    webSocketFactory: () => new SockJS(WS_BASE_URL) as unknown as WebSocket,
+    webSocketFactory: () => new SockJS(WS_BASE_URL, null, WS_OPTIONS) as unknown as WebSocket,
     reconnectDelay: 4000,
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,
@@ -40,7 +41,10 @@ export function conectarStatusPedidoSocket(
     };
   };
 
+  let conectou = false;
   client.onConnect = () => {
+    if (conectou) aoReconectar?.();
+    conectou = true;
     assinatura?.unsubscribe();
     assinatura = client.subscribe(`/topic/pedidos/${pedidoId}/status`, (frame: IMessage) => {
       const status = frame.body.trim().replace(/^"|"$/g, '') as StatusPedido;

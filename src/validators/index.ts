@@ -374,8 +374,9 @@ export const validarPercentualDesconto: Validador = (valor) => {
  * omitido mantém o valor atual).
  */
 export const validarEstoque: Validador = (valor) => {
-  if (valor === '' || valor === null || valor === undefined) return null;
+  if (valor === '' || valor === null || valor === undefined) return 'Informe o estoque disponível.';
   const numero = Number(valor);
+  if (numero > 2147483647) return 'A quantidade informada é muito grande.';
   if (Number.isNaN(numero) || !Number.isInteger(numero)) return 'Informe uma quantidade inteira de unidades.';
   if (numero < 0) return 'O estoque não pode ser negativo.';
   return null;

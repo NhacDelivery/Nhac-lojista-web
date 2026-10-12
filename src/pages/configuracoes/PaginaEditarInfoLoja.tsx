@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
@@ -76,8 +77,9 @@ const PaginaEditarInfoLoja = () => {
       navigate('/configuracoes');
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setErro(tratado.mensagemGeral || 'Não foi possível concluir.');
       if (tratado.toastGenerico) {
-        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.');
+        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.', { tipo: 'erro' });
       } else {
         setErro(tratado.mensagemGeral ?? 'Erro ao salvar informações.');
       }
@@ -98,9 +100,7 @@ const PaginaEditarInfoLoja = () => {
     <LayoutPagina titulo="Editar informações">
       <form onSubmit={handleSalvar} noValidate className={estilos.form}>
         {erro && (
-          <div style={{ color: 'var(--nhac-erro, #e53935)', marginBottom: '1rem', fontSize: '0.875rem' }}>
-            {erro}
-          </div>
+          <AvisoFormulario mensagem={erro} />
         )}
 
         <Cartao className={estilos.secao}>
@@ -124,9 +124,7 @@ const PaginaEditarInfoLoja = () => {
                 style={{ display: 'none' }}
               />
               {erroFoto && (
-                <span style={{ color: 'var(--nhac-erro, #e53935)', fontSize: '0.8125rem' }}>
-                  {erroFoto}
-                </span>
+                <AvisoFormulario mensagem={erroFoto} />
               )}
             </div>
           </div>

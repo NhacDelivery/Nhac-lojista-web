@@ -96,10 +96,10 @@ const PaginaDetalhePedido = () => {
       setPedido((pedidoAnterior) =>
         pedidoAnterior ? { ...pedidoAnterior, status: novoStatus } : pedidoAnterior,
       );
-    });
+    }, () => { void carregarPedido(); });
 
     return () => socket.desconectar();
-  }, [id, mostrarToast]);
+  }, [id, mostrarToast, carregarPedido]);
 
   if (carregando) {
     return (
@@ -146,7 +146,7 @@ const PaginaDetalhePedido = () => {
   const aplicarTransicao = async (novoStatus: StatusPedido) => {
     const ehCancelamentoPermitido = novoStatus === "CANCELADO" && podeCancelar(statusAtual);
     if (!ehCancelamentoPermitido && !podeTransicionarComoLojista(statusAtual, novoStatus)) {
-      mostrarToast("Transição de status inválida.");
+      mostrarToast("Transição de status inválida.", { tipo: 'erro' });
       return;
     }
     setSalvandoStatus(true);
@@ -157,10 +157,10 @@ const PaginaDetalhePedido = () => {
     } catch (err) {
       const tratado = tratarErroApi(err);
       if (tratado.transicaoInvalida) {
-        mostrarToast(tratado.mensagemGeral ?? "Transição de status inválida.");
+        mostrarToast(tratado.mensagemGeral ?? "Transição de status inválida.", { tipo: 'erro' });
         setStatus(pedido.status as StatusPedido);
       } else {
-        mostrarToast(tratado.mensagemGeral ?? "Erro ao atualizar status.");
+        mostrarToast(tratado.mensagemGeral ?? "Erro ao atualizar status.", { tipo: 'erro' });
       }
     } finally {
       setSalvandoStatus(false);
@@ -177,10 +177,11 @@ const PaginaDetalhePedido = () => {
         ofertas.length > 0
           ? `Oferta reenviada para ${ofertas.length} entregador(es).`
           : "Nenhum entregador disponível neste momento.",
+        { tipo: ofertas.length > 0 ? "sucesso" : "aviso", titulo: ofertas.length > 0 ? "Oferta enviada" : "Aguardando entregador" },
       );
     } catch (err) {
       const tratado = tratarErroApi(err);
-      mostrarToast(tratado.mensagemGeral ?? "Não foi possível buscar entregadores.");
+      mostrarToast(tratado.mensagemGeral ?? "Não foi possível buscar entregadores.", { tipo: 'erro' });
     } finally {
       setDespachando(false);
     }
@@ -231,6 +232,13 @@ const PaginaDetalhePedido = () => {
                         <span className={estilos.nomeItem}>
                           {item.quantidade}x {item.nome}
                         </span>
+                        {item.adicionais && item.adicionais.length > 0 && (
+                          <ul className={estilos.adicionaisItem} aria-label={`Adicionais de ${item.nome}`}>
+                            {item.adicionais.map((adicional, indice) => (
+                              <li key={`${indice}-${adicional}`}>{adicional}</li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                       <span className={estilos.precoItem}>
                         {formatarMoeda(item.preco * item.quantidade)}

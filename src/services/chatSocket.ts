@@ -15,7 +15,8 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { MensagemDTO } from './api';
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
+import { WS_BASE_URL, WS_OPTIONS } from './endpoints';
+
 
 export interface ChatSocket {
   aoConectar: (callback: () => void) => void;
@@ -37,7 +38,7 @@ export function conectarChatSocket(): ChatSocket {
   const ouvintes = new Map<string, (mensagem: MensagemDTO) => void>();
 
   const client = new Client({
-    webSocketFactory: () => new SockJS(WS_BASE_URL) as unknown as WebSocket,
+    webSocketFactory: () => new SockJS(WS_BASE_URL, null, WS_OPTIONS) as unknown as WebSocket,
     reconnectDelay: 4000,
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,

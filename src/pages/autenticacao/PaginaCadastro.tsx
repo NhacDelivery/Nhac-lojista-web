@@ -1,3 +1,6 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
+import { AvisoModelo } from '../../utils/feedback';
+import { focarCampo } from '../../utils/focoFormulario';
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
@@ -82,7 +85,7 @@ const DIAS_SEMANA = [
 
 export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastro) {
   const navigate = useNavigate();
-  const { definirSessao } = useAutenticacao();
+  const { usuario, definirSessao, atualizarPerfil } = useAutenticacao();
   const { recarregar: recarregarLoja } = useLoja();
   const { mostrarToast } = useToast();
 
@@ -105,11 +108,17 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   }, [modo]);
 
   const [etapaAtual, setEtapaAtual] = useState(0);
+  const [aviso, setAviso] = useState<AvisoModelo | null>(null);
+  const [campoParaFoco, setCampoParaFoco] = useState<string | null>(null);
+  useEffect(() => {
+    if (campoParaFoco) { focarCampo(campoParaFoco); setCampoParaFoco(null); }
+  }, [campoParaFoco, etapaAtual]);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [cadastroConcluido, setCadastroConcluido] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [contaCriada, setContaCriada] = useState(false);
   const finalizando = useRef(false);
+  const lojaCriadaNestaSessao = useRef(false);
   // Spec §7: 429 no envio de código → bloqueia o botão Avançar com temporizador.
   const [bloqueadoEnvioAte, setBloqueadoEnvioAte] = useState<number | null>(null);
 
@@ -207,6 +216,15 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     });
   };
 
+  const exibirErrosEtapa = (novosErros: Record<string, string>) => {
+    setErros(novosErros);
+    const campos = Object.keys(novosErros);
+    if (campos.length) {
+      setAviso({ titulo: 'Revise os campos indicados', mensagem: 'Algumas informações precisam ser corrigidas para continuar.', tom: 'erro', campos: novosErros });
+      setCampoParaFoco(campos[0]);
+    } else setAviso(null);
+  };
+
   const validarDadosPessoais = () => {
     const novosErros = validarFormulario(
       { nomeCompleto, email, telefone, senha, confirmarSenha },
@@ -219,7 +237,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       }
     );
     if (!aceitouTermos) novosErros.termos = 'É necessário aceitar os termos para continuar.';
-    setErros(novosErros);
+    exibirErrosEtapa(novosErros);
     setErrosTocados({
       nomeCompleto: true,
       email: true,
@@ -239,7 +257,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         categoriaLoja: validarCategoria,
       }
     );
-    setErros(novosErros);
+    exibirErrosEtapa(novosErros);
     return Object.keys(novosErros).length === 0;
   };
 
@@ -257,7 +275,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     );
     const erroComplemento = validarComplemento(complemento);
     if (erroComplemento) novosErros.complemento = erroComplemento;
-    setErros(novosErros);
+    exibirErrosEtapa(novosErros);
     return Object.keys(novosErros).length === 0;
   };
 
@@ -270,14 +288,14 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     if (!Number.isNaN(min) && !Number.isNaN(max) && max < min) {
       novosErros.tempoEntregaMax = 'O tempo máximo deve ser maior ou igual ao mínimo';
     }
-    setErros(novosErros);
+    exibirErrosEtapa(novosErros);
     return Object.keys(novosErros).length === 0;
   };
 
   const validarEtapaPagamento = () => {
     const selecionadoAlgum = Object.values(pagamentos).some(v => v);
     if (!selecionadoAlgum) {
-      setErros({ pagamentos: 'Selecione pelo menos uma forma de pagamento' });
+      exibirErrosEtapa({ pagamentos: 'Selecione pelo menos uma forma de pagamento' });
       return false;
     }
     setErros({});
@@ -298,8 +316,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         if (resultadoEmail.existe) {
           const msg = 'Este e-mail já está cadastrado. Faça login.';
           setErros({ email: msg });
-          mostrarToast(msg);
-          navigate('/login');
+          setAviso(tratarErroApi(new Error(msg)).aviso || null);
+          setCampoParaFoco('email');
           setCarregando(false);
           return;
         }
@@ -307,8 +325,9 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         const tratCheck = tratarErroApi(erroCheck);
         if (tratCheck.sugerirLogin) {
           setErros({ email: tratCheck.mensagemGeral ?? 'Este e-mail já está cadastrado.' });
-          mostrarToast(tratCheck.mensagemGeral ?? 'Este e-mail já está cadastrado. Faça login.');
-          navigate('/login');
+          mostrarToast(tratCheck.mensagemGeral ?? 'Este e-mail já está cadastrado. Faça login.', { tipo: 'erro' });
+          setAviso(tratCheck.aviso || null);
+          setCampoParaFoco('email');
           setCarregando(false);
           return;
         }
@@ -321,11 +340,13 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         // backend responder com a mensagem definitiva.
       }
       try {
+        setAviso(null);
         await enviarCodigoCadastro(email);
         setEtapaAtual(indices.VERIFICACAO);
         window.scrollTo(0, 0);
       } catch (err) {
         const tratado = tratarErroApi(err);
+        setAviso(tratado.aviso || null);
         if (tratado.sugerirLogin) {
           setErros({ geral: `${tratado.mensagemGeral} Faça login se já possui conta.` });
         } else if (tratado.rateLimit) {
@@ -333,7 +354,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
           setBloqueadoEnvioAte(Date.now() + 60 * 1000);
           setErros({ geral: tratado.mensagemGeral ?? 'Muitas tentativas. Aguarde antes de reenviar.' });
         } else if (tratado.toastGenerico) {
-          mostrarToast(tratado.mensagemGeral ?? 'Erro interno.');
+          mostrarToast(tratado.mensagemGeral ?? 'Erro interno.', { tipo: 'erro' });
         } else {
           setErros({ geral: tratado.mensagemGeral ?? 'Erro ao enviar código.' });
         }
@@ -359,6 +380,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     else if (etapaAtual === indices.PAGAMENTO) valido = validarEtapaPagamento();
 
     if (valido) {
+      setAviso(null);
       setEtapaAtual((prev) => Math.min(prev + 1, etapas.length - 1));
       window.scrollTo(0, 0);
     }
@@ -422,6 +444,9 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     finalizando.current = true;
     setCarregando(true);
     setErros({});
+    setAviso(null);
+    let contaJaCriada = contaCriada;
+    let idParaAtualizar = usuario?.id;
     try {
       if (!logoArquivo && !fotoUrl) {
         setErros({ imagemUrl: 'Selecione a logo da loja antes de finalizar.' });
@@ -448,15 +473,18 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         if (!tokenValido || !respostaRegistro.usuarioId) {
           throw new Error('Não foi possível iniciar sua sessão. Faça login para continuar o cadastro da loja.');
         }
+        idParaAtualizar = respostaRegistro.usuarioId;
         definirSessao(tokenValido, {
           id: respostaRegistro.usuarioId,
           nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
           email,
           telefone,
+          papel: respostaRegistro.papel,
           // O dono administra a loja após o backend concluir sua criação.
           cargo: 'administrador',
         });
         setContaCriada(true);
+        contaJaCriada = true;
         limparEmailVerificado();
       }
 
@@ -472,7 +500,11 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         }
       }
 
-      await criarLoja(montarPayloadLoja(imagemUrl));
+      if (!lojaCriadaNestaSessao.current) {
+        await criarLoja(montarPayloadLoja(imagemUrl));
+        lojaCriadaNestaSessao.current = true;
+      }
+      await atualizarPerfil(idParaAtualizar);
       await recarregarLoja();
 
       if (modo === 'apenas-loja') {
@@ -483,17 +515,22 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       setCadastroConcluido(true);
     } catch (err) {
       const tratado = tratarErroApi(err);
-      if (tratado.redirecionarVerificacao) {
+      setAviso(tratado.aviso || null);
+      const campos = Object.fromEntries(Object.entries(tratado.errosCampos || {}).map(([campo, mensagem]) => [
+        campo === 'nome' ? (contaJaCriada || modo === 'apenas-loja' ? 'nomeLoja' : 'nomeCompleto') : campo.split('.').pop() || campo,
+        mensagem,
+      ]));
+      setErros({ ...campos, geral: tratado.mensagemGeral || 'Revise os dados para continuar.' });
+      setErrosTocados(prev => ({ ...prev, ...Object.fromEntries(Object.keys(campos).map(campo => [campo, true])) }));
+      if (tratado.redirecionarVerificacao && indices.VERIFICACAO >= 0) {
         setEtapaAtual(indices.VERIFICACAO);
-        setErros({ geral: tratado.mensagemGeral ?? 'Erro de verificação.' });
-      } else if (tratado.sugerirLogin) {
-        setErros({ geral: `${tratado.mensagemGeral} Faça login se já possui conta.` });
-      } else if (tratado.errosCampos) {
-        setErros(tratado.errosCampos);
-      } else if (tratado.toastGenerico) {
-        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.');
       } else {
-        setErros({ geral: tratado.mensagemGeral ?? 'Erro ao cadastrar. Tente novamente.' });
+        const campo = Object.keys(campos)[0];
+        const etapa = ['nomeCompleto', 'email', 'telefone', 'senha'].includes(campo) && !contaJaCriada ? indices.DADOS
+          : ['cep', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'uf', 'complemento'].includes(campo) ? indices.ENDERECO
+          : ['raioEntregaKm', 'taxaEntregaBase', 'tempoEntregaMin', 'tempoEntregaMax'].includes(campo) ? indices.ENTREGA
+          : ['nomeLoja', 'descricao', 'categoria', 'imagemUrl'].includes(campo) ? indices.LOJA : -1;
+        if (etapa >= 0) { setEtapaAtual(etapa); setCampoParaFoco(campo); }
       }
     } finally {
       finalizando.current = false;
@@ -597,13 +634,13 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         <IndicadorEtapas etapas={etapas} etapaAtual={etapaAtual} />
 
         <Cartao className={estilos.cartao}>
-          {erros.geral && <div className={estilos.erro}>{erros.geral}</div>}
+          {(aviso || erros.geral) && <AvisoFormulario aviso={aviso || undefined} mensagem={erros.geral} aoCorrigirCampo={focarCampo} />}
 
           {/* Dados Pessoais */}
           {modo === 'completo' && etapaAtual === indices.DADOS && (
             <div className={estilos.grid}>
               <InputTexto
-                rotulo="Nome Completo"
+                name="nomeCompleto" rotulo="Nome Completo"
                 valor={nomeCompleto}
                 aoMudar={setNomeCompleto}
                 icone={<User size={18} />}
@@ -612,7 +649,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 obrigatorio
               />
               <InputTexto
-                rotulo="E-mail"
+                name="email" rotulo="E-mail"
                 tipo="email"
                 valor={email}
                 aoMudar={setEmail}
@@ -622,7 +659,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 obrigatorio
               />
               <InputTexto
-                rotulo="Telefone"
+                name="telefone" rotulo="Telefone"
                 valor={telefone}
                 aoMudar={(v) => setTelefone(mascaraTelefone(v))}
                 icone={<Phone size={18} />}
