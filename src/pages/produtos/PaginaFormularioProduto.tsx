@@ -1,3 +1,5 @@
+import { AvisoModelo } from '../../utils/feedback';
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import LayoutPagina from "../../components/layout/LayoutPagina";
@@ -57,6 +59,7 @@ const PaginaFormularioProduto = () => {
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
+  const [aviso, setAviso] = useState<AvisoModelo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [errosTocados, setErrosTocados] = useState<Record<string, boolean>>({});
@@ -133,6 +136,7 @@ const PaginaFormularioProduto = () => {
     try {
       setCarregando(true);
       setErro(null);
+    setAviso(null);
       if (!id) return;
       const produto = await buscarProduto(id);
       setProdutoCarregado(true);
@@ -178,12 +182,15 @@ const PaginaFormularioProduto = () => {
     }
 
     setErro(null);
+    setAviso(null);
     setEnviandoImagem(true);
     try {
       const url = await enviarImagem(arquivo, "produtos");
       setFotoUrl(url);
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setAviso(tratado.aviso || null);
+      if (tratado.errosCampos) setErros(tratado.errosCampos);
       setErro(tratado.mensagemGeral ?? "Não foi possível enviar a imagem.");
     } finally {
       setEnviandoImagem(false);
@@ -212,6 +219,7 @@ const PaginaFormularioProduto = () => {
       return;
     }
     setErro(null);
+    setAviso(null);
     if (!validarTudo()) return;
 
     setSalvando(true);
@@ -244,6 +252,8 @@ const PaginaFormularioProduto = () => {
       navigate("/produtos");
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setAviso(tratado.aviso || null);
+      if (tratado.errosCampos) setErros(tratado.errosCampos);
       setErro(tratado.mensagemGeral ?? "Erro ao salvar produto.");
     } finally {
       // Após erro de rede/backend, reabilitar o botão para permitir retry
@@ -258,7 +268,7 @@ const PaginaFormularioProduto = () => {
       navigate("/produtos");
     } catch (err) {
       const tratado = tratarErroApi(err);
-      mostrarToast(tratado.mensagemGeral ?? "Erro ao excluir produto.");
+      mostrarToast(tratado.mensagemGeral ?? "Erro ao excluir produto.", { tipo: 'erro' });
     }
   };
 
@@ -267,9 +277,7 @@ const PaginaFormularioProduto = () => {
       <form onSubmit={handleSalvar} noValidate className={estilos.form}>
         {carregando && <p className={estilos.status}>Carregando produto...</p>}
         {erro && (
-          <p className={estilos.erro} role="alert">
-            {erro}
-          </p>
+          <AvisoFormulario mensagem={erro} aviso={aviso || undefined} />
         )}
         <div className={estilos.container}>
           <Cartao className={estilos.secao}>

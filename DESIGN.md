@@ -103,3 +103,9 @@ Português direto: “Adicionar opção”, “Remover grupo”, “Salvar Produ
 ## Fluxos operacionais
 
 No chat, aguardar a confirmação da mensagem pelo servidor e recuperar o histórico após a reconexão. Na edição do endereço, exibir a posição marcada no mapa e só anunciar sucesso quando endereço e coordenadas forem salvos. A navegação deve manter acessíveis pedidos antigos, filtros e estados de erro.
+
+## Avisos e recuperação
+
+`AvisoFormulario` é o componente compartilhado para falhas que exigem correção. Usa os tokens de superfície, texto, raio e tons de `tema.css`, com uma faixa lateral, ícone e título. O texto principal explica a situação; a orientação diz o que fazer; campos conhecidos têm links de foco. Não exibir status HTTP, stack trace, SQL, senha ou corpo da requisição. A referência de suporte fica em uma divulgação secundária.
+
+`ToastContext` usa a mesma linguagem visual. Sucessos são anunciados educadamente e encerrados após seis segundos, pausando com foco/hover; falhas persistem até fechar e não usam o tom de sucesso. Um formulário mantém seu aviso próprio mesmo quando há uma notificação complementar.

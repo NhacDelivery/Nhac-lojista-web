@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import LayoutPagina from "../../components/layout/LayoutPagina";
@@ -71,8 +72,7 @@ const PaginaListaFuncionarios = () => {
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(
-        tratado.mensagemGeral ?? "Não foi possível desativar o funcionário.",
-      );
+        tratado.mensagemGeral ?? "Não foi possível desativar o funcionário.", { tipo: 'erro' });
     } finally {
       setConfirmandoExclusao(null);
     }
@@ -88,8 +88,7 @@ const PaginaListaFuncionarios = () => {
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(
-        tratado.mensagemGeral ?? "Não foi possível reativar o funcionário.",
-      );
+        tratado.mensagemGeral ?? "Não foi possível reativar o funcionário.", { tipo: 'erro' });
     }
   };
 
@@ -124,7 +123,7 @@ const PaginaListaFuncionarios = () => {
               color: "var(--nhac-texto-claro)",
             }}
           >
-            <p>{erro}</p>
+            <AvisoFormulario mensagem={erro} />
             <Botao variante="secundario" onClick={carregar}>
               Tentar novamente
             </Botao>

@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
@@ -202,7 +203,7 @@ const PaginaEnderecoLoja = () => {
         </Cartao>
 
         <div className={estilos.acoes}>
-          {erroGeral && <span className={estilos.erro}>{erroGeral}</span>}
+          {erroGeral && <AvisoFormulario mensagem={erroGeral} />}
           <Botao variante="fantasma" onClick={() => navigate('/configuracoes')}>
             Cancelar
           </Botao>

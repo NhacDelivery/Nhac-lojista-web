@@ -1,3 +1,4 @@
+import { AvisoModelo, descreverAviso, mensagemCampo } from "./feedback";
 /**
  * Tratamento padronizado de erros retornados pelo backend Nhac.
  *
@@ -73,6 +74,7 @@ export function ehApiError(erro: unknown): erro is ApiError {
 
 /** Resultado da interpretação de um erro de API pela camada de UI. */
 export interface ResultadoTratamentoErro {
+  aviso?: AvisoModelo;
   /** Mensagem para exibir em alerta geral / toast. */
   mensagemGeral?: string;
   /** Erros por campo, já normalizados a partir de `details` do backend. */
@@ -150,7 +152,7 @@ export function mapearErroBackend(erro: unknown): {
   return { mensagem, resultado };
 }
 
-export function tratarErroApi(erro: unknown): ResultadoTratamentoErro {
+function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
   if (!ehApiError(erro)) {
     return {
       mensagemGeral: erro instanceof Error ? erro.message : "Erro inesperado.",
@@ -280,6 +282,20 @@ export function tratarErroApi(erro: unknown): ResultadoTratamentoErro {
   }
 
   return { mensagemGeral: mensagem };
+}
+
+/** Uma interpretação compartilhada para campos, alertas persistentes e avisos. */
+export function tratarErroApi(erro: unknown): ResultadoTratamentoErro {
+  const resultado = interpretarErroApi(erro);
+  const aviso = descreverAviso(erro);
+  return {
+    ...resultado,
+    aviso,
+    mensagemGeral: resultado.mensagemGeral || aviso.mensagem,
+    errosCampos: resultado.errosCampos
+      ? Object.fromEntries(Object.entries(resultado.errosCampos).map(([campo, msg]) => [campo, mensagemCampo(msg)]))
+      : aviso.campos,
+  };
 }
 
 export const CHAVE_EMAIL_VERIFICADO = "@nhac:emailVerificado";

@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LayoutPagina from '../../components/layout/LayoutPagina';
 import Cartao from '../../components/ui/Cartao';
@@ -74,8 +75,7 @@ const PaginaFinanceiro = () => {
           <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--nhac-texto-claro)' }}>Carregando...</p>
         ) : erro || !dados ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--nhac-texto-claro)' }}>
-            <p>{erro ?? 'Não foi possível carregar os dados financeiros.'}</p>
-            <Botao variante="secundario" onClick={carregar}>Tentar novamente</Botao>
+            <AvisoFormulario mensagem={erro || 'Não foi possível carregar os dados financeiros.'} aoTentarNovamente={carregar} />
           </div>
         ) : (
           <>

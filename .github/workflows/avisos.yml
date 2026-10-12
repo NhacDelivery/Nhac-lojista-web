@@ -1,0 +1,33 @@
+name: Avisos e recuperação do lojista
+on:
+  pull_request:
+    paths: ['src/**', 'e2e/avisos*', 'tool/serve-ui-tests.cjs', 'package*.json', '.github/workflows/avisos.yml']
+  push:
+    branches: ['main', 'fix/lojista-review-20260928']
+jobs:
+  avisos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint
+      - run: npx tsc --project tsconfig.e2e.json
+      - run: npm test -- --watchAll=false --runInBand
+        env:
+          CI: 'true'
+      - run: npm run build
+        env:
+          CI: 'true'
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config=e2e/avisos.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: avisos-lojista-evidencias
+          path: test-results/
+          retention-days: 7

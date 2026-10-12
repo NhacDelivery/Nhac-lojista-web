@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LayoutPagina from '../../components/layout/LayoutPagina';
@@ -73,8 +74,9 @@ const PaginaFormularioFuncionario = () => {
       navigate('/funcionarios');
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setErro(tratado.mensagemGeral || 'Não foi possível concluir.');
       if (tratado.toastGenerico) {
-        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.');
+        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.', { tipo: 'erro' });
       } else {
         setErro(tratado.mensagemGeral ?? 'Não foi possível salvar o funcionário.');
       }
@@ -98,9 +100,7 @@ const PaginaFormularioFuncionario = () => {
           <h3 className={estilos.tituloSecao}>Dados do Funcionário</h3>
 
           {erro && (
-            <div style={{ color: 'var(--nhac-erro, #e53935)', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              {erro}
-            </div>
+            <AvisoFormulario mensagem={erro} />
           )}
 
           <div className={estilos.grid}>

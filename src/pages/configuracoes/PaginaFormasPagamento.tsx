@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LayoutPagina from "../../components/layout/LayoutPagina";
@@ -118,7 +119,7 @@ const PaginaFormasPagamento = () => {
           Selecione as formas de pagamento que sua loja aceita.
         </p>
 
-        {erro && <span className={estilos.erro}>{erro}</span>}
+        {erro && <AvisoFormulario mensagem={erro} />}
 
         <div className={estilos.gridPagamentos}>
           {opcoes.map(({ chave, icone: Icone, rotulo }) => (

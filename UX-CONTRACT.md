@@ -55,3 +55,14 @@ As escolhas de `itens[].adicionais` são snapshots do backend e aparecem abaixo 
 | Equipe e configuração da loja | Sim | Não | Não | Não |
 
 A API aplica as restrições com o cargo atualizado do banco, inclusive após rebaixamento com o mesmo token. O vínculo da loja continua obrigatório. Configurações da própria conta preservam a autorização individual já existente.
+
+## Feedback de erro compartilhado
+
+| Capacidade | Dono | Fonte | Comportamento | Evidência |
+| --- | --- | --- | --- | --- |
+| Aviso de formulário | `src/components/ui/AvisoFormulario.tsx` | `src/utils/feedback.ts` | Título, explicação, orientação, foco no campo e ações de recuperação; persistente | `AvisoFormulario.test.tsx`, `e2e/avisos.spec.ts` |
+| Toast | `src/contexts/ToastContext.tsx` | `tema.css`, contrato atual | Sucesso `role=status`, erro persistente, fechar acessível, timer cancelado e pausa por foco/hover | `ToastContext.test.tsx` |
+
+As regras de identidade são as de `domain/auth/AuthController.java:registrar` e `RegistroRequestDTO`: e-mail confirmado, telefone/e-mail únicos e senha válida. O painel explica as rejeições sem alterar essas regras. Depois de um 400 no registro, mantém os dados da loja e retorna à etapa do campo rejeitado. E-mail já existente não provoca navegação automática; oferece login e recuperação de senha.
+
+Bean Validation é traduzida em mensagens de campo em português. 403 explica acesso sem tratar falta de permissão como logout; a sessão inválida identificada pelo cliente HTTP encaminha ao login com um aviso. Conflito pede atualização de dados; rede e indisponibilidade oferecem recuperação; timeout não afirma que uma gravação deixou de acontecer nem repete uma mutação automaticamente. O backend continua responsável pela autorização e pela confirmação das alterações.

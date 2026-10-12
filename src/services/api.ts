@@ -20,6 +20,7 @@ function tratar401SessaoExpirada(): void {
   const token = localStorage.getItem("@nhac:token");
   if (token) {
     limparSessao();
+    sessionStorage.setItem('@nhac:motivoSessao', 'Sua sessão expirou. Entre novamente para continuar.');
     window.location.href = "/login";
   }
 }
@@ -43,9 +44,10 @@ async function requisicao<T>(
     });
   } catch (erro) {
     if (controller.signal.aborted)
-      throw new Error(
-        "A requisição demorou demais ou foi cancelada. Tente novamente.",
-      );
+      throw new ApiError({ status: 0, error: "TEMPO_LIMITE", message: "Não recebemos a confirmação a tempo." });
+    if (erro instanceof TypeError) {
+      throw new ApiError({ status: 0, error: "REDE_INDISPONIVEL", message: "Não foi possível conectar ao Nhac." });
+    }
     throw erro;
   } finally {
     clearTimeout(prazo);

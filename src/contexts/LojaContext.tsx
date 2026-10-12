@@ -67,7 +67,7 @@ export const ProvedorLoja: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoja(null);
         setSemLoja(true);
       } else if (tratado.toastGenerico) {
-        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.');
+        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.', { tipo: 'erro' });
         setErro(tratado.mensagemGeral ?? null);
       } else {
         setErro(tratado.mensagemGeral ?? 'Erro ao carregar loja.');

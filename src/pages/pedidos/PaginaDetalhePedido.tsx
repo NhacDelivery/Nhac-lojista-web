@@ -146,7 +146,7 @@ const PaginaDetalhePedido = () => {
   const aplicarTransicao = async (novoStatus: StatusPedido) => {
     const ehCancelamentoPermitido = novoStatus === "CANCELADO" && podeCancelar(statusAtual);
     if (!ehCancelamentoPermitido && !podeTransicionarComoLojista(statusAtual, novoStatus)) {
-      mostrarToast("Transição de status inválida.");
+      mostrarToast("Transição de status inválida.", { tipo: 'erro' });
       return;
     }
     setSalvandoStatus(true);
@@ -157,10 +157,10 @@ const PaginaDetalhePedido = () => {
     } catch (err) {
       const tratado = tratarErroApi(err);
       if (tratado.transicaoInvalida) {
-        mostrarToast(tratado.mensagemGeral ?? "Transição de status inválida.");
+        mostrarToast(tratado.mensagemGeral ?? "Transição de status inválida.", { tipo: 'erro' });
         setStatus(pedido.status as StatusPedido);
       } else {
-        mostrarToast(tratado.mensagemGeral ?? "Erro ao atualizar status.");
+        mostrarToast(tratado.mensagemGeral ?? "Erro ao atualizar status.", { tipo: 'erro' });
       }
     } finally {
       setSalvandoStatus(false);
@@ -180,7 +180,7 @@ const PaginaDetalhePedido = () => {
       );
     } catch (err) {
       const tratado = tratarErroApi(err);
-      mostrarToast(tratado.mensagemGeral ?? "Não foi possível buscar entregadores.");
+      mostrarToast(tratado.mensagemGeral ?? "Não foi possível buscar entregadores.", { tipo: 'erro' });
     } finally {
       setDespachando(false);
     }

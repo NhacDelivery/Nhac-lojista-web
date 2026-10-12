@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import LayoutPagina from "../../components/layout/LayoutPagina";
@@ -67,8 +68,7 @@ const PaginaListaProdutos = () => {
     } catch (err) {
       mostrarToast(
         tratarErroApi(err).mensagemGeral ??
-          "Não foi possível carregar mais produtos.",
-      );
+          "Não foi possível carregar mais produtos.", { tipo: 'erro' });
     } finally {
       setCarregandoMais(false);
     }
@@ -88,11 +88,10 @@ const PaginaListaProdutos = () => {
     } catch (err) {
       const tratado = tratarErroApi(err);
       if (tratado.toastGenerico) {
-        mostrarToast(tratado.mensagemGeral ?? "Erro interno.");
+        mostrarToast(tratado.mensagemGeral ?? "Erro interno.", { tipo: 'erro' });
       } else {
         mostrarToast(
-          tratado.mensagemGeral ?? "Erro ao alterar status do produto.",
-        );
+          tratado.mensagemGeral ?? "Erro ao alterar status do produto.", { tipo: 'erro' });
       }
     }
   };
@@ -155,7 +154,7 @@ const PaginaListaProdutos = () => {
           </div>
         ) : erro ? (
           <div className={estilos.vazio}>
-            <p>{erro}</p>
+            <AvisoFormulario mensagem={erro} />
           </div>
         ) : produtosFiltrados.length === 0 ? (
           <div className={estilos.vazio}>

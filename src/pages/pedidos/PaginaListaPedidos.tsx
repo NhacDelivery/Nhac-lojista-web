@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import { chaveConta } from '../../services/endpoints';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -123,14 +124,14 @@ const PaginaListaPedidos = () => {
           ))}
         </div>
 
-        {erroAtualizacao && <div role="alert">A atualização falhou. Os pedidos anteriores foram preservados. <Botao onClick={() => void carregarPedidos(true)}>Tentar novamente</Botao></div>}
+        {erroAtualizacao && <AvisoFormulario mensagem="A atualização falhou. Os pedidos anteriores foram preservados." aoTentarNovamente={() => void carregarPedidos(true)} />}
         {carregando ? (
           <div className={estilos.vazio}>
             <p>Carregando pedidos...</p>
           </div>
         ) : erro ? (
           <div className={estilos.vazio}>
-            <p>{erro}</p><Botao onClick={() => void carregarPedidos()}>Tentar novamente</Botao>
+            <AvisoFormulario mensagem={erro} /><Botao onClick={() => void carregarPedidos()}>Tentar novamente</Botao>
           </div>
         ) : pedidosFiltrados.length === 0 ? (
           <div className={estilos.vazio}>

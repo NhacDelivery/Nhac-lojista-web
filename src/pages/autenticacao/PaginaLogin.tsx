@@ -1,3 +1,4 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
@@ -23,6 +24,11 @@ export default function PaginaLogin() {
   // Rate limit (429): bloqueia o envio até o temporizador zerar.
   const [bloqueadoAte, setBloqueadoAte] = useState<number | null>(null);
   const [segundosRestantes, setSegundosRestantes] = useState(0);
+
+  useEffect(() => {
+    const motivo = sessionStorage.getItem('@nhac:motivoSessao');
+    if (motivo) { setErros({ geral: motivo }); sessionStorage.removeItem('@nhac:motivoSessao'); }
+  }, []);
 
   useEffect(() => {
     if (bloqueadoAte === null) {
@@ -115,7 +121,7 @@ export default function PaginaLogin() {
           <p className={estilos.subtitulo}>Lojas</p>
         </div>
 
-        {erros.geral && <div className={estilos.erro}>{erros.geral}</div>}
+        {erros.geral && <AvisoFormulario mensagem={erros.geral} />}
 
         <form className={estilos.formulario} onSubmit={lidarComSubmit} noValidate>
           <InputTexto

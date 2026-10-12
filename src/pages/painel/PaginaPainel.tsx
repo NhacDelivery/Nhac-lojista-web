@@ -105,8 +105,7 @@ const PaginaPainel = () => {
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(
-        tratado.mensagemGeral ?? "Não foi possível atualizar o status da loja.",
-      );
+        tratado.mensagemGeral ?? "Não foi possível atualizar o status da loja.", { tipo: 'erro' });
     } finally {
       setAlterandoStatusLoja(false);
     }

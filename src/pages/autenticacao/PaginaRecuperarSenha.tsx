@@ -1,3 +1,5 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
+import { AvisoModelo } from '../../utils/feedback';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from 'lucide-react';
@@ -29,6 +31,7 @@ export default function PaginaRecuperarSenha() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  const [aviso, setAviso] = useState<AvisoModelo | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [concluido, setConcluido] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -53,13 +56,16 @@ export default function PaginaRecuperarSenha() {
     if (Object.keys(novosErros).length > 0) return;
 
     setErros({});
+    setAviso(null);
     setCarregando(true);
     try {
       await esqueciSenhaEmail(email.trim().toLowerCase());
       setCooldown(COOLDOWN_SEGUNDOS);
       setEtapa('codigo');
     } catch (err) {
-      setErros({ email: tratarErroApi(err).mensagemGeral ?? 'Erro ao enviar código.' });
+      const tratado = tratarErroApi(err);
+      setAviso(tratado.aviso || null);
+      setErros({ email: tratado.mensagemGeral ?? 'Erro ao enviar código.' });
     } finally {
       setCarregando(false);
     }
@@ -73,6 +79,7 @@ export default function PaginaRecuperarSenha() {
       return;
     }
     setErros({});
+    setAviso(null);
     setEtapa('nova-senha');
   };
 
@@ -90,6 +97,7 @@ export default function PaginaRecuperarSenha() {
     }
 
     setErros({});
+    setAviso(null);
     setCarregando(true);
     try {
       // O backend valida email + código + novaSenha em uma chamada
@@ -97,6 +105,7 @@ export default function PaginaRecuperarSenha() {
       setConcluido(true);
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setAviso(tratado.aviso || null);
       // Código inválido/expirado → voltar para a etapa de código
       if (tratado.erroCodigo) {
         setErros({ codigo: tratado.erroCodigo });
@@ -151,6 +160,7 @@ export default function PaginaRecuperarSenha() {
           <p className={estilos.subtituloCabecalho}>Lojas</p>
         </div>
 
+        {aviso && <AvisoFormulario aviso={aviso} />}
         {/* ETAPA 1 — E-mail */}
         {etapa === 'email' && (
           <div className={estilos.corpo}>

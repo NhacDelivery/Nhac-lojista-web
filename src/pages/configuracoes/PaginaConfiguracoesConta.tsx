@@ -1,3 +1,5 @@
+import AvisoFormulario from '../../components/ui/AvisoFormulario';
+import { AvisoModelo } from '../../utils/feedback';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import LayoutPagina from "../../components/layout/LayoutPagina";
@@ -52,6 +54,7 @@ const PaginaConfiguracoesConta = () => {
   const [salvandoSenha, setSalvandoSenha] = useState(false);
   const [salvandoEmail, setSalvandoEmail] = useState(false);
   const [salvandoTelefone, setSalvandoTelefone] = useState(false);
+  const [aviso, setAviso] = useState<AvisoModelo | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
 
   // Notificações — GET/PUT /usuarios/{id}/preferencias-notificacao
@@ -118,7 +121,8 @@ const PaginaConfiguracoesConta = () => {
       // Reverte para não mentir sobre o que está gravado no servidor.
       setPreferencias(anterior);
       const tratado = tratarErroApi(err);
-      mostrarToast(tratado.mensagemGeral ?? "Erro ao salvar preferências.");
+      setAviso(tratado.aviso || null);
+      mostrarToast(tratado.mensagemGeral ?? "Erro ao salvar preferências.", { tipo: 'erro' });
     } finally {
       setSalvandoPreferencias(false);
     }
@@ -167,9 +171,11 @@ const PaginaConfiguracoesConta = () => {
       sincronizarSessao({ email: emailSalvo }, resposta.accessToken);
       setEditandoEmail(false);
       setErros({});
+    setAviso(null);
       mostrarToast("E-mail atualizado com sucesso.");
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setAviso(tratado.aviso || null);
       if (tratado.errosCampos) {
         setErros(tratado.errosCampos);
       } else if (tratado.sugerirLogin) {
@@ -227,9 +233,11 @@ const PaginaConfiguracoesConta = () => {
       setTelefoneComCodigo("");
       setEditandoTelefone(false);
       setErros({});
+    setAviso(null);
       mostrarToast("Telefone atualizado com sucesso.");
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setAviso(tratado.aviso || null);
       if (tratado.erroCodigo) {
         setErros({ codigoTelefone: tratado.erroCodigo });
       } else if (tratado.errosCampos) {
@@ -267,10 +275,12 @@ const PaginaConfiguracoesConta = () => {
       setSenha("");
       setConfirmarSenha("");
       setErros({});
+    setAviso(null);
       setEditandoSenha(false);
       mostrarToast("Senha alterada com sucesso.");
     } catch (err) {
       const tratado = tratarErroApi(err);
+      setAviso(tratado.aviso || null);
       setErros({
         senhaAtual: tratado.mensagemGeral ?? "Erro ao alterar senha.",
       });
@@ -282,6 +292,7 @@ const PaginaConfiguracoesConta = () => {
   return (
     <LayoutPagina titulo="Configurações da conta">
       <div className={estilos.container}>
+        {aviso && <AvisoFormulario aviso={aviso} />}
         {/* Dados de acesso */}
         <Cartao className={estilos.secao}>
           <h3 className={estilos.tituloSecao}>Dados de acesso</h3>
@@ -507,12 +518,7 @@ const PaginaConfiguracoesConta = () => {
 
           <div className={estilos.listaToggles}>
             {erroPreferencias && (
-              <div role="alert">
-                Não foi possível carregar suas preferências.{" "}
-                <button onClick={() => setTentativaPreferencias((v) => v + 1)}>
-                  Tentar novamente
-                </button>
-              </div>
+              <AvisoFormulario mensagem="Não foi possível carregar suas preferências." aoTentarNovamente={() => setTentativaPreferencias(v => v + 1)} />
             )}
             <Toggle
               rotulo="Novos pedidos"

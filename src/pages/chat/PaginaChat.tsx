@@ -80,8 +80,7 @@ const PaginaChat = () => {
       localStorage.setItem(chavePersistencia.current, JSON.stringify(valor));
     } catch {
       mostrarToast(
-        "Não foi possível guardar a mensagem neste aparelho. Libere espaço e tente novamente.",
-      );
+        "Não foi possível guardar a mensagem neste aparelho. Libere espaço e tente novamente.", { tipo: 'erro' });
       return false;
     }
     pendentesRef.current = valor;
@@ -114,8 +113,7 @@ const PaginaChat = () => {
       } catch (err) {
         const tratado = tratarErroApi(err);
         mostrarToast(
-          tratado.mensagemGeral ?? "Não foi possível carregar as conversas.",
-        );
+          tratado.mensagemGeral ?? "Não foi possível carregar as conversas.", { tipo: 'erro' });
       } finally {
         listaOcupada.current = false;
         setCarregandoConversas(false);
@@ -184,8 +182,7 @@ const PaginaChat = () => {
         );
     } catch {
       mostrarToast(
-        "Não foi possível confirmar a leitura. Tentaremos novamente enquanto a conversa estiver aberta.",
-      );
+        "Não foi possível confirmar a leitura. Tentaremos novamente enquanto a conversa estiver aberta.", { tipo: 'erro' });
     }
   };
   useEffect(() => {
@@ -218,8 +215,7 @@ const PaginaChat = () => {
     } catch {
       restaurandoPosicao.current = false;
       mostrarToast(
-        "Não foi possível carregar mensagens antigas. Tente novamente.",
-      );
+        "Não foi possível carregar mensagens antigas. Tente novamente.", { tipo: 'erro' });
     } finally {
       setCarregandoAntigas(false);
     }
@@ -271,8 +267,7 @@ const PaginaChat = () => {
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(
-        tratado.mensagemGeral ?? "Não foi possível carregar o histórico.",
-      );
+        tratado.mensagemGeral ?? "Não foi possível carregar o histórico.", { tipo: 'erro' });
     } finally {
       if (ativaRef.current === id) setCarregandoMensagens(false);
     }

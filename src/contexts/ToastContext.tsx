@@ -1,50 +1,43 @@
-import React, { createContext, useCallback, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { TomAviso, descreverAviso } from '../utils/feedback';
+import estilos from './ToastContext.module.css';
 
-interface ToastContextType {
-  mostrarToast: (mensagem: string) => void;
-}
-
+interface OpcoesToast { tipo?: TomAviso; titulo?: string; }
+interface ToastContextType { mostrarToast: (mensagem: string, opcoes?: OpcoesToast) => void; }
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
-
+const DURACAO_SUCESSO = 6000;
 export const ProvedorToast: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [mensagem, setMensagem] = useState<string | null>(null);
-
-  const mostrarToast = useCallback((texto: string) => {
-    setMensagem(texto);
-    window.setTimeout(() => setMensagem(null), 4000);
-  }, []);
-
-  return (
-    <ToastContext.Provider value={{ mostrarToast }}>
-      {children}
-      {mensagem && (
-        <div
-          role="alert"
-          style={{
-            position: 'fixed',
-            bottom: '1.5rem',
-            right: '1.5rem',
-            zIndex: 'var(--z-toast, 500)',
-            background: 'var(--nhac-texto, #5D201C)',
-            color: 'var(--nhac-sobre-primaria, #FEE3E1)',
-            padding: '0.875rem 1.25rem',
-            borderRadius: 'var(--raio-cartao, 16px)',
-            boxShadow: '0 6px 20px rgba(93, 32, 28, 0.30)',
-            maxWidth: '320px',
-            fontSize: '0.875rem',
-          }}
-        >
-          {mensagem}
-        </div>
-      )}
-    </ToastContext.Provider>
-  );
+  const [aviso, setAviso] = useState<{ mensagem: string; tipo: TomAviso; titulo?: string; orientacao?: string } | null>(null);
+  const pausas = useRef(new Set<string>());
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const limparTimer = useCallback(() => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } }, []);
+  const fechar = useCallback(() => { limparTimer(); setAviso(null); }, [limparTimer]);
+  const mostrarToast = useCallback((mensagem: string, opcoes?: OpcoesToast) => {
+    limparTimer();
+    // Uma chamada nova substitui a anterior. O timer antigo nunca fecha o aviso novo.
+    const modelo = opcoes?.tipo === 'erro' ? descreverAviso(mensagem) : null;
+    setAviso({ mensagem: modelo?.mensagem || mensagem, tipo: modelo?.tom || opcoes?.tipo || 'sucesso', titulo: opcoes?.titulo || modelo?.titulo, orientacao: modelo?.orientacao });
+  }, [limparTimer]);
+  useEffect(() => {
+    if (aviso && aviso.tipo === 'sucesso') timer.current = setTimeout(fechar, DURACAO_SUCESSO);
+    return limparTimer;
+  }, [aviso, fechar, limparTimer]);
+  const pausar = (motivo: string) => { pausas.current.add(motivo); limparTimer(); };
+  const retomar = (motivo: string) => { pausas.current.delete(motivo); if (!pausas.current.size && aviso?.tipo === 'sucesso') { limparTimer(); timer.current = setTimeout(fechar, DURACAO_SUCESSO); } };
+  const Icone = aviso?.tipo === 'sucesso' ? CheckCircle2 : aviso?.tipo === 'info' ? Info : AlertCircle;
+  return <ToastContext.Provider value={{ mostrarToast }}>
+    {children}
+    {aviso && <div className={`${estilos.toast} ${estilos[aviso.tipo]}`} role={aviso.tipo === 'erro' ? 'alert' : 'status'}
+      onMouseEnter={() => pausar('mouse')} onMouseLeave={() => retomar('mouse')} onFocus={() => pausar('foco')} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) retomar('foco'); }}>
+      <Icone size={22} aria-hidden="true" className={estilos.icone} />
+      <div className={estilos.conteudo}><strong>{aviso.titulo || (aviso.tipo === 'sucesso' ? 'Tudo certo' : aviso.tipo === 'erro' ? 'Confira este aviso' : 'Antes de continuar')}</strong><p>{aviso.mensagem}</p>{aviso.orientacao && <p>{aviso.orientacao}</p>}</div>
+      <button type="button" className={estilos.fechar} onClick={fechar} aria-label="Fechar aviso"><X size={18} aria-hidden="true" /></button>
+    </div>}
+  </ToastContext.Provider>;
 };
-
 export function useToast(): ToastContextType {
   const ctx = useContext(ToastContext);
-  if (!ctx) {
-    throw new Error('useToast deve ser usado dentro de ProvedorToast');
-  }
+  if (!ctx) throw new Error('useToast deve ser usado dentro de ProvedorToast');
   return ctx;
 }
