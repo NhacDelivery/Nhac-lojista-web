@@ -28,7 +28,7 @@ test("login rejeitado não cria sessão nem mostra dados da loja", async ({
   await page.getByTestId("e2e.login.email").fill("e2e.lojista@nhac.local");
   await page.getByTestId("e2e.login.password").fill("senha-invalida123");
   await page.getByTestId("e2e.login.submit").click();
-  await expect(page.getByText(/E-mail ou senha inválidos/i)).toBeVisible();
+  await expect(page.getByRole("alert", { name: "Não conseguimos entrar" })).toContainText("E-mail ou senha não conferem.");
   await expect(page).toHaveURL(/\/login$/);
   expect(
     await page.evaluate(() => localStorage.getItem("@nhac:token")),

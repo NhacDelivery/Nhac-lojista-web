@@ -177,6 +177,7 @@ const PaginaDetalhePedido = () => {
         ofertas.length > 0
           ? `Oferta reenviada para ${ofertas.length} entregador(es).`
           : "Nenhum entregador disponível neste momento.",
+        { tipo: ofertas.length > 0 ? "sucesso" : "aviso", titulo: ofertas.length > 0 ? "Oferta enviada" : "Aguardando entregador" },
       );
     } catch (err) {
       const tratado = tratarErroApi(err);

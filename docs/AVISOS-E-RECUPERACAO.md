@@ -36,3 +36,5 @@ npx playwright test --config=e2e/avisos.config.ts
 ```
 
 Os testes de avisos usam respostas controladas da API para provocar os estados visuais sem cadastrar usuários ou enviar mensagens em produção. Incluem o fluxo completo até a rejeição do telefone, retorno/foco no campo, dados da loja preservados, e-mail existente sem navegação automática, login em 390 px e falha de rede. Os testes de backend existentes permanecem separados em `playwright.config.ts`.
+
+Após criar a loja, o painel consulta novamente o perfil autenticado: o backend promove CLIENTE para LOJISTA, e a sessão precisa refletir esse papel antes de abrir as configurações. O teste de cadastro concluído cobre a abertura da tela sem novo login. Testes do contexto garantem que funcionários, inclusive administradores, continuam bloqueados nas configurações exclusivas do dono.

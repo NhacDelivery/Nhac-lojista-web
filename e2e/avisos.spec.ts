@@ -88,3 +88,27 @@ test('sem conexão explica recuperação e não mostra Failed to fetch', async (
   await expect(page.getByRole('alert')).toHaveAccessibleName('Não conseguimos conectar');
   await expect(page.getByRole('alert')).not.toContainText('Failed to fetch');
 });
+
+test('cadastro concluído atualiza papel e abre configurações sem sair da conta', async ({ page }) => {
+  await interceptar(page);
+  let loja: Record<string, unknown> | null = null;
+  await page.route('**/api/v1/**', async route => {
+    const url = route.request().url();
+    if (url.endsWith('/auth/registrar')) return route.fulfill({ json: { accessToken: 'token-teste', usuarioId: 'novo-dono', nome: 'Pessoa de Teste', papel: 'CLIENTE' } });
+    if (url.endsWith('/uploads/imagem')) return route.fulfill({ json: { url: 'https://exemplo.local/logo.png' } });
+    if (url.endsWith('/lojas') && route.request().method() === 'POST') {
+      loja = { ...route.request().postDataJSON(), id: 'loja-teste' };
+      return route.fulfill({ json: { id: 'loja-teste' } });
+    }
+    if (url.endsWith('/usuarios/novo-dono')) return route.fulfill({ json: { id: 'novo-dono', nome: 'Pessoa de Teste', email: 'cadastro@exemplo.local', telefone: '11988887777', papel: loja ? 'LOJISTA' : 'CLIENTE', cargo: null } });
+    if (url.endsWith('/lojas/minha-loja')) return loja ? route.fulfill({ json: loja }) : route.fulfill({ status: 404, json: { status: 404, error: 'LOJA_NAO_ENCONTRADA', message: 'Loja não encontrada.' } });
+    return route.fallback();
+  });
+  await preencherCadastro(page);
+  await page.getByRole('button', { name: 'Confirmar e Finalizar' }).click();
+  await expect(page.getByRole('button', { name: 'Ir para o painel' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('@nhac:usuario') || '{}').papel)).toBe('LOJISTA');
+  await page.goto('/configuracoes');
+  await expect(page.getByRole('button', { name: 'Nome, categoria e descrição' })).toBeVisible();
+  await expect(page.getByText('Acesso Negado', { exact: true })).toHaveCount(0);
+});

@@ -85,7 +85,7 @@ const DIAS_SEMANA = [
 
 export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastro) {
   const navigate = useNavigate();
-  const { definirSessao } = useAutenticacao();
+  const { usuario, definirSessao, atualizarPerfil } = useAutenticacao();
   const { recarregar: recarregarLoja } = useLoja();
   const { mostrarToast } = useToast();
 
@@ -118,6 +118,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   const [carregando, setCarregando] = useState(false);
   const [contaCriada, setContaCriada] = useState(false);
   const finalizando = useRef(false);
+  const lojaCriadaNestaSessao = useRef(false);
   // Spec §7: 429 no envio de código → bloqueia o botão Avançar com temporizador.
   const [bloqueadoEnvioAte, setBloqueadoEnvioAte] = useState<number | null>(null);
 
@@ -445,6 +446,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     setErros({});
     setAviso(null);
     let contaJaCriada = contaCriada;
+    let idParaAtualizar = usuario?.id;
     try {
       if (!logoArquivo && !fotoUrl) {
         setErros({ imagemUrl: 'Selecione a logo da loja antes de finalizar.' });
@@ -471,11 +473,13 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         if (!tokenValido || !respostaRegistro.usuarioId) {
           throw new Error('Não foi possível iniciar sua sessão. Faça login para continuar o cadastro da loja.');
         }
+        idParaAtualizar = respostaRegistro.usuarioId;
         definirSessao(tokenValido, {
           id: respostaRegistro.usuarioId,
           nomeCompleto: respostaRegistro.nome ?? nomeCompleto,
           email,
           telefone,
+          papel: respostaRegistro.papel,
           // O dono administra a loja após o backend concluir sua criação.
           cargo: 'administrador',
         });
@@ -496,7 +500,11 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         }
       }
 
-      await criarLoja(montarPayloadLoja(imagemUrl));
+      if (!lojaCriadaNestaSessao.current) {
+        await criarLoja(montarPayloadLoja(imagemUrl));
+        lojaCriadaNestaSessao.current = true;
+      }
+      await atualizarPerfil(idParaAtualizar);
       await recarregarLoja();
 
       if (modo === 'apenas-loja') {

@@ -13,6 +13,7 @@ interface ContextoAutenticacao {
     token: string,
     dados: Partial<Usuario> & { id: string; nomeCompleto: string },
   ) => void;
+  atualizarPerfil: (id?: string) => Promise<void>;
   sair: () => void;
 }
 
@@ -105,6 +106,24 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({
     localStorage.setItem("@nhac:usuario", JSON.stringify(usuarioFormatado));
   };
 
+  const atualizarPerfil = async (id = usuario?.id) => {
+    const token = localStorage.getItem("@nhac:token");
+    if (!id || !token) throw new Error("Faça login para atualizar sua sessão.");
+    const perfil = await buscarUsuario(id);
+    // Uma resposta antiga não pode restaurar uma sessão encerrada ou trocada.
+    if (localStorage.getItem("@nhac:token") !== token) return;
+    definirSessao(token, {
+      id: perfil.id,
+      nomeCompleto: perfil.nome,
+      email: perfil.email,
+      telefone: perfil.telefone,
+      fotoUrl: perfil.imagemUrl,
+      papel: perfil.papel,
+      cargo: mapearCargo(perfil.papel, perfil.cargo),
+      lojaId: usuario?.lojaId ?? "",
+    });
+  };
+
   const entrar = async (
     emailBruto: string,
     senha: string,
@@ -119,6 +138,10 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({
       const perfil = await buscarUsuario(autenticado.id);
       const completo = {
         ...autenticado,
+        papel: perfil.papel,
+        cargo: mapearCargo(perfil.papel, perfil.cargo),
+        nomeCompleto: perfil.nome,
+        email: perfil.email,
         telefone: perfil.telefone,
         fotoUrl: perfil.imagemUrl,
       };
@@ -145,7 +168,7 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({
 
   return (
     <AutenticacaoContext.Provider
-      value={{ usuario, carregando, entrar, definirSessao, sair }}
+      value={{ usuario, carregando, entrar, definirSessao, atualizarPerfil, sair }}
     >
       {children}
     </AutenticacaoContext.Provider>

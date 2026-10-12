@@ -28,7 +28,7 @@ export const ProvedorToast: React.FC<{ children: ReactNode }> = ({ children }) =
   const Icone = aviso?.tipo === 'sucesso' ? CheckCircle2 : aviso?.tipo === 'info' ? Info : AlertCircle;
   return <ToastContext.Provider value={{ mostrarToast }}>
     {children}
-    {aviso && <div className={`${estilos.toast} ${estilos[aviso.tipo]}`} role={aviso.tipo === 'erro' ? 'alert' : 'status'}
+    {aviso && <div className={`${estilos.toast} ${estilos[aviso.tipo]}`} role={aviso.tipo === 'erro' || aviso.tipo === 'aviso' ? 'alert' : 'status'}
       onMouseEnter={() => pausar('mouse')} onMouseLeave={() => retomar('mouse')} onFocus={() => pausar('foco')} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) retomar('foco'); }}>
       <Icone size={22} aria-hidden="true" className={estilos.icone} />
       <div className={estilos.conteudo}><strong>{aviso.titulo || (aviso.tipo === 'sucesso' ? 'Tudo certo' : aviso.tipo === 'erro' ? 'Confira este aviso' : 'Antes de continuar')}</strong><p>{aviso.mensagem}</p>{aviso.orientacao && <p>{aviso.orientacao}</p>}</div>
