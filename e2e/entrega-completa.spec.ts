@@ -56,13 +56,13 @@ test('pedido percorre cliente, lojista e motoboy até entrega e aparece concluí
     await expect(page.getByTestId('e2e.order.status')).toContainText('A caminho');
     await expect(page.getByTestId('e2e.order.advance')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Cancelar pedido', exact: true })).toHaveCount(0);
-    expect((await loja.post(`entregas/${pedidoId}/concluir`, { data: { codigo: '000000' } })).status()).toBe(403);
+    expect((await loja.post(`entregas/${pedidoId}/concluir`, { data: { codigo: '0000' } })).status()).toBe(403);
 
     const detalheCliente = await cliente.get(`pedidos/${pedidoId}`);
     expect(detalheCliente.status()).toBe(200);
     const { codigoEntrega } = await detalheCliente.json();
-    expect(codigoEntrega).toMatch(/^\d{6}$/);
-    const errado = String((Number(codigoEntrega) + 1) % 1_000_000).padStart(6, '0');
+    expect(codigoEntrega).toMatch(/^\d{4}$/);
+    const errado = String((Number(codigoEntrega) + 1) % 10_000).padStart(4, '0');
     expect((await motoboy.post(`entregas/${pedidoId}/concluir`, { data: { codigo: errado } })).status()).toBe(400);
     expect(await estadoPedido(loja, pedidoId)).toBe('SAIU_ENTREGA');
     expect((await motoboy.post(`entregas/${pedidoId}/concluir`, { data: { codigo: codigoEntrega } })).status()).toBe(204);
