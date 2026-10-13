@@ -38,7 +38,7 @@ const PaginaInformacaoLoja = () => {
     <LayoutPagina titulo="Informações da loja">
       <div className={estilos.container}>
         <div className={estilos.perfil}>
-          <Avatar nome={nomeLoja} fotoUrl={imagemLoja} tamanho="grande" />
+          <Avatar tipo="logo" nome={nomeLoja} fotoUrl={imagemLoja} tamanho="grande" />
           <h2 className={estilos.nomeLoja}>{nomeLoja}</h2>
           <p className={estilos.categoriaLoja}>
             {categoriaLoja ? `Cozinha · ${categoriaLoja}` : 'Categoria não informada'}

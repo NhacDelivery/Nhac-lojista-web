@@ -104,12 +104,15 @@
   background-color: var(--nhac-primaria-fundo);
 }
 
-.previewImagem {
+ .previewImagem {
   width: 120px;
   height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--nhac-primaria);
+  border-radius: var(--raio-medio);
+  object-fit: contain;
+  background: var(--nhac-superficie);
+  border: 1px solid var(--nhac-borda);
+  padding: 8px;
+  box-sizing: border-box;
 }
 
 .uploadIcone {

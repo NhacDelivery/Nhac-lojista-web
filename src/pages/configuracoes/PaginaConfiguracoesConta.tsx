@@ -360,11 +360,15 @@ const PaginaConfiguracoesConta = () => {
                     <InputTexto
                       rotulo="Novo telefone"
                       valor={telefone}
-                      aoMudar={(v) => setTelefone(mascaraTelefone(v))}
+                      aoMudar={(v) => {
+                        setTelefone(mascaraTelefone(v));
+                        setCodigoTelefone("");
+                        setTelefoneComCodigo("");
+                      }}
                       placeholder="(11) 99999-0000"
                       erro={erros.telefone}
                     />
-                    {telefoneComCodigo === soDigitos(telefone) && (
+                    {(!!telefoneComCodigo && telefoneComCodigo === soDigitos(telefone)) && (
                       <InputTexto
                         rotulo="Código SMS"
                         valor={codigoTelefone}
@@ -405,7 +409,7 @@ const PaginaConfiguracoesConta = () => {
                     carregando={salvandoTelefone}
                     onClick={handleSalvarTelefone}
                   >
-                    {telefoneComCodigo === soDigitos(telefone)
+                    {(!!telefoneComCodigo && telefoneComCodigo === soDigitos(telefone))
                       ? "Confirmar telefone"
                       : "Enviar código SMS"}
                   </Botao>

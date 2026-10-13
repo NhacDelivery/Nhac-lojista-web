@@ -9,6 +9,9 @@ import Cartao from '../../components/ui/Cartao';
 import { listarFuncionarios, criarFuncionario, atualizarFuncionario } from '../../services/api';
 import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
+import { AvisoModelo, descreverAviso } from '../../utils/feedback';
+import { focarCampo } from '../../utils/focoFormulario';
+import { obrigatorio, validarEmail, validarTelefone, validarSenhaCadastro, normalizarEmail, soDigitos } from '../../validators';
 import estilos from './PaginaFormularioFuncionario.module.css';
 
 const opcoesCargo = [
@@ -31,10 +34,14 @@ const PaginaFormularioFuncionario = () => {
   const [senha, setSenha] = useState('');
   const [carregandoDados, setCarregandoDados] = useState(ehEdicao);
   const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState('');
+  const [aviso, setAviso] = useState<AvisoModelo | null>(null);
+  const [erros, setErros] = useState<Record<string, string>>({});
+  const [registroCarregado, setRegistroCarregado] = useState(!ehEdicao);
 
   useEffect(() => {
     if (!ehEdicao || !id) return;
+    let ativo = true;
+    setRegistroCarregado(false);
     // Não existe GET /lojista/funcionarios/{id} — a listagem já traz tudo,
     // então reaproveita a lista pra achar o registro (mesmo padrão que a
     // tela de produtos usa pra editar produtos inativos).
@@ -42,44 +49,60 @@ const PaginaFormularioFuncionario = () => {
       try {
         setCarregandoDados(true);
         const funcionarios = await listarFuncionarios();
+        if (!ativo) return;
         const func = funcionarios.find(f => f.id === id);
         if (func) {
+          setRegistroCarregado(true);
           setNome(func.nomeCompleto);
           setEmail(func.email);
           setTelefone(func.telefone || '');
           setCargo(func.cargo);
         } else {
-          setErro('Funcionário não encontrado.');
+          setAviso(descreverAviso({ status: 404 }));
         }
       } catch (err) {
         const tratado = tratarErroApi(err);
-        setErro(tratado.mensagemGeral ?? 'Não foi possível carregar os dados do funcionário.');
+        if (ativo) setAviso(tratado.aviso || null);
       } finally {
-        setCarregandoDados(false);
+        if (ativo) setCarregandoDados(false);
       }
     })();
+    return () => { ativo = false; };
   }, [ehEdicao, id]);
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (salvando || !registroCarregado) return;
+    const telefoneDigitos = soDigitos(telefone);
+    const telefoneNacional = telefoneDigitos.startsWith('55') && telefoneDigitos.length > 11 ? telefoneDigitos.slice(2) : telefoneDigitos;
+    const validacoes: Record<string, string | null> = {
+      nome: obrigatorio('Informe o nome do funcionário.')(nome),
+      cargo: opcoesCargo.some(opcao => opcao.valor && opcao.valor === cargo) ? null : 'Selecione um cargo.',
+      telefone: !ehEdicao || telefone.trim() ? validarTelefone(telefoneNacional) : null,
+      ...(!ehEdicao ? { email: validarEmail(email), senha: validarSenhaCadastro(senha) } : {}),
+    };
+    const invalidos = Object.fromEntries(Object.entries(validacoes).filter((entrada): entrada is [string, string] => !!entrada[1]));
+    setErros(invalidos);
+    if (Object.keys(invalidos).length) {
+      setAviso(descreverAviso({ status: 400, details: invalidos }));
+      focarCampo(Object.keys(invalidos)[0]);
+      return;
+    }
     setSalvando(true);
-    setErro('');
+    setAviso(null);
     try {
       if (ehEdicao && id) {
-        await atualizarFuncionario(id, { nome, telefone, cargo });
+        await atualizarFuncionario(id, { nome: nome.trim(), telefone: telefoneNacional, cargo });
       } else {
-        await criarFuncionario({ nome, email, telefone, senha, cargo });
+        await criarFuncionario({ nome: nome.trim(), email: normalizarEmail(email), telefone: telefoneNacional, senha, cargo });
       }
       mostrarToast(ehEdicao ? 'Funcionário atualizado.' : 'Funcionário cadastrado.');
       navigate('/funcionarios');
     } catch (err) {
       const tratado = tratarErroApi(err);
-      setErro(tratado.mensagemGeral || 'Não foi possível concluir.');
-      if (tratado.toastGenerico) {
-        mostrarToast(tratado.mensagemGeral ?? 'Erro interno.', { tipo: 'erro' });
-      } else {
-        setErro(tratado.mensagemGeral ?? 'Não foi possível salvar o funcionário.');
-      }
+      setAviso(tratado.aviso || null);
+      setErros(tratado.errosCampos || {});
+      if (tratado.errosCampos) focarCampo(Object.keys(tratado.errosCampos)[0]);
     } finally {
       setSalvando(false);
     }
@@ -99,13 +122,16 @@ const PaginaFormularioFuncionario = () => {
         <Cartao className={estilos.cartao}>
           <h3 className={estilos.tituloSecao}>Dados do Funcionário</h3>
 
-          {erro && (
-            <AvisoFormulario mensagem={erro} />
+          {aviso && (
+            <AvisoFormulario aviso={aviso} aoCorrigirCampo={focarCampo} />
           )}
 
           <div className={estilos.grid}>
-            <InputTexto rotulo="Nome Completo" valor={nome} aoMudar={setNome} obrigatorio />
+            <InputTexto name="nome" erro={erros.nome || erros.nomeCompleto} rotulo="Nome Completo" valor={nome} aoMudar={setNome} obrigatorio />
             <InputTexto
+              name="email"
+              erro={erros.email}
+              autoComplete="email"
               rotulo="E-mail"
               tipo="email"
               valor={email}
@@ -116,12 +142,15 @@ const PaginaFormularioFuncionario = () => {
               // esse campo).
               disabled={ehEdicao}
             />
-            <InputTexto rotulo="Telefone" valor={telefone} aoMudar={setTelefone} placeholder="(00) 00000-0000" />
-            <Seletor rotulo="Cargo" valor={cargo} aoMudar={setCargo} opcoes={opcoesCargo} obrigatorio />
+            <InputTexto name="telefone" erro={erros.telefone} obrigatorio={!ehEdicao} tipo="tel" autoComplete="tel-national" rotulo="Telefone" valor={telefone} aoMudar={setTelefone} placeholder="(00) 00000-0000" />
+            <Seletor erro={erros.cargo} rotulo="Cargo" valor={cargo} aoMudar={setCargo} opcoes={opcoesCargo} obrigatorio />
 
             {!ehEdicao && (
               <div>
                 <InputTexto
+                  name="senha"
+                  erro={erros.senha}
+                  autoComplete="new-password"
                   rotulo="Senha inicial"
                   tipo="password"
                   valor={senha}
@@ -138,7 +167,7 @@ const PaginaFormularioFuncionario = () => {
 
         <div className={estilos.acoes}>
           <Botao type="button" variante="fantasma" onClick={() => navigate('/funcionarios')}>Cancelar</Botao>
-          <Botao type="submit" variante="primario" carregando={salvando}>Salvar</Botao>
+          <Botao type="submit" variante="primario" carregando={salvando} disabled={!registroCarregado}>Salvar</Botao>
         </div>
       </form>
     </LayoutPagina>

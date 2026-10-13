@@ -66,3 +66,11 @@ A API aplica as restrições com o cargo atualizado do banco, inclusive após re
 As regras de identidade são as de `domain/auth/AuthController.java:registrar` e `RegistroRequestDTO`: e-mail confirmado, telefone/e-mail únicos e senha válida. O painel explica as rejeições sem alterar essas regras. Depois de um 400 no registro, mantém os dados da loja e retorna à etapa do campo rejeitado. E-mail já existente não provoca navegação automática; oferece login e recuperação de senha.
 
 Bean Validation é traduzida em mensagens de campo em português. 403 explica acesso sem tratar falta de permissão como logout; a sessão inválida identificada pelo cliente HTTP encaminha ao login com um aviso. Conflito pede atualização de dados; rede e indisponibilidade oferecem recuperação; timeout não afirma que uma gravação deixou de acontecer nem repete uma mutação automaticamente. O backend continua responsável pela autorização e pela confirmação das alterações.
+
+## Imagens, equipe e confirmação de telefone
+
+- Logo: variante `logo` do Avatar, superfície branca e imagem inteira. Avatar de pessoa mantém sua apresentação própria.
+- Produto: entradas JPG/PNG/WEBP até 5 MB; novos uploads pelo painel saem como JPEG 800 × 800 (1:1), sem recorte ou distorção, com fundo branco. Arquivo ilegível não é enviado. Imagens antigas são contidas em moldura quadrada. Essa normalização é do painel; o backend continua validando MIME e tamanho.
+- Equipe: nome e cargo obrigatórios; criação exige e-mail, telefone com DDD e senha de oito caracteres com letra/número. Edição preserva telefone quando vazio. Validar antes de enviar; falha da API mantém valores, mostra resumo persistente e erros por campo. Edição de registro não encontrado bloqueia salvar. O servidor continua responsável por autorização e unicidade.
+- Telefone da conta: código SMS só aparece após envio bem-sucedido para o número preenchido. Dois campos vazios nunca significam código enviado.
+- Evidência: regressões de equipe, SMS, layout estreito, logo e upload real por canvas em `e2e/avisos.spec.ts`; integração com backend em `e2e/equipe-sessao.spec.ts` e `e2e/configuracoes.spec.ts`.

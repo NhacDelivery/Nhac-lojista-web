@@ -153,7 +153,7 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
 
       <div className={estilos.rodape}>
         <div className={estilos.perfil}>
-          <Avatar
+          <Avatar tipo="logo"
             nome={loja?.nome || usuario.nomeCompleto}
             fotoUrl={loja?.imagemUrl}
             tamanho="pequeno"
