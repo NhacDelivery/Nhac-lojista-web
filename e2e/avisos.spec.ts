@@ -194,7 +194,7 @@ test('produto normaliza foto retangular e mantém foto após arquivo corrompido'
     expect(corpo.toString('latin1')).toContain('image/jpeg');
     const jpeg = corpo.subarray(inicio, corpo.lastIndexOf(Buffer.from([0xff, 0xd9])) + 2);
     await page.route('**/foto-normalizada.jpg', r => r.fulfill({ body: jpeg, contentType: 'image/jpeg' }));
-    await route.fulfill({ json: { url: 'http://127.0.0.1:3100/foto-normalizada.jpg' } });
+    await route.fulfill({ json: { url: `${new URL(page.url()).origin}/foto-normalizada.jpg` } });
   });
   await page.goto('/produtos/novo');
   const imagem = await page.evaluate(() => {
