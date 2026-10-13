@@ -88,14 +88,14 @@
 
 .imagemWrapper {
   width: 100%;
-  height: 200px;
+  aspect-ratio: 1 / 1;
   background-color: var(--nhac-fundo);
 }
 
 .imagem {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .info {

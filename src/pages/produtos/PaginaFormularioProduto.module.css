@@ -151,3 +151,15 @@
     width: 100%;
   }
 }
+
+.previewImagem {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: var(--nhac-superficie);
+  border-radius: var(--raio-pequeno);
+}
+.ajudaImagem { color: var(--nhac-texto-claro); line-height: 1.5; display: block; margin-top: 8px; }
+.areaUpload[aria-disabled="true"] { cursor: progress; }
+.areaUpload:focus-visible { outline: 2px solid var(--nhac-primaria); outline-offset: 3px; }

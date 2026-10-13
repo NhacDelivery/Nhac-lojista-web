@@ -34,7 +34,7 @@ const BarraSuperior: React.FC<BarraSuperiorProps> = ({ titulo, onAbrirMenu, reco
         <div className={estilos.direita}>
           <div className={estilos.conta}>
             <button type="button" aria-label="Opções da conta" aria-expanded={aberto} onClick={() => setAberto(!aberto)} className={estilos.botaoConta}>
-              <Avatar nome={loja?.nome || usuario.nomeCompleto} fotoUrl={loja?.imagemUrl} tamanho="pequeno" />
+              <Avatar tipo="logo" nome={loja?.nome || usuario.nomeCompleto} fotoUrl={loja?.imagemUrl} tamanho="pequeno" />
             </button>
             {aberto && <div className={estilos.menuConta} onKeyDown={(event) => { if (event.key === 'Escape') setAberto(false); }}>
               {usuario.papel !== "FUNCIONARIO" && <button onClick={() => { setAberto(false); navigate('/configuracoes'); }}>Configurações da loja</button>}

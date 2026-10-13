@@ -109,3 +109,7 @@ No chat, aguardar a confirmação da mensagem pelo servidor e recuperar o histó
 `AvisoFormulario` é o componente compartilhado para falhas que exigem correção. Usa os tokens de superfície, texto, raio e tons de `tema.css`, com uma faixa lateral, ícone e título. O texto principal explica a situação; a orientação diz o que fazer; campos conhecidos têm links de foco. Não exibir status HTTP, stack trace, SQL, senha ou corpo da requisição. A referência de suporte fica em uma divulgação secundária.
 
 `ToastContext` usa a mesma linguagem visual. Sucessos são anunciados educadamente e encerrados após seis segundos, pausando com foco/hover; falhas persistem até fechar e não usam o tom de sucesso. Um formulário mantém seu aviso próprio mesmo quando há uma notificação complementar.
+
+## Imagens da loja e do catálogo
+
+Logos usam superfície branca, borda do tema e cantos arredondados, com `object-fit: contain`; fotos de pessoas continuam usando o avatar circular. Fotos de produto usam moldura 1:1 e contenção, inclusive no chat. Novos uploads são convertidos para JPEG 800 × 800, centralizados sobre branco e preservando a proporção inteira. Mostrar formatos aceitos, limite de 5 MB e resultado antes da seleção. Durante preparação/envio, indicar andamento e bloquear seleção/remoção concorrentes. Uma falha mantém a imagem anterior.

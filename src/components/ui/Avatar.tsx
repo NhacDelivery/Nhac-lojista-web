@@ -6,9 +6,10 @@ export interface PropsAvatar {
   fotoUrl?: string;
   tamanho?: 'pequeno' | 'medio' | 'grande';
   className?: string;
+  tipo?: 'foto' | 'logo';
 }
 
-const Avatar = ({ nome, fotoUrl, tamanho = 'medio', className = '' }: PropsAvatar) => {
+const Avatar = ({ nome, fotoUrl, tamanho = 'medio', className = '', tipo = 'foto' }: PropsAvatar) => {
   const [erroImagem, setErroImagem] = useState(false);
 
   useEffect(() => setErroImagem(false), [fotoUrl]);
@@ -23,13 +24,13 @@ const Avatar = ({ nome, fotoUrl, tamanho = 'medio', className = '' }: PropsAvata
   const mostrarIniciais = !fotoUrl || erroImagem;
 
   return (
-    <div className={`${estilos.avatar} ${estilos[tamanho]} ${className}`}>
+    <div className={`${estilos.avatar} ${estilos[tamanho]} ${tipo === 'logo' ? estilos.logo : ''} ${className}`}>
       {mostrarIniciais ? (
         <span className={estilos.iniciais}>{obterIniciais(nome)}</span>
       ) : (
         <img 
           src={fotoUrl} 
-          alt={`Avatar de ${nome}`} 
+          alt={`${tipo === 'logo' ? 'Logo' : 'Avatar'} de ${nome}`} 
           className={estilos.imagem}
           onError={() => setErroImagem(true)}
         />

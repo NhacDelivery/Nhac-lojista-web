@@ -1,3 +1,4 @@
+import { prepararImagemProduto } from '../../utils/imagemProduto';
 import { AvisoModelo } from '../../utils/feedback';
 import AvisoFormulario from '../../components/ui/AvisoFormulario';
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -172,11 +173,12 @@ const PaginaFormularioProduto = () => {
     const arquivo = e.target.files?.[0];
     // Permite reselecionar o mesmo arquivo depois de um erro
     e.target.value = "";
-    if (!arquivo) return;
+    if (!arquivo || enviandoImagem) return;
 
     // Mesmas regras do backend: JPG/PNG/WEBP até 5 MB (evita request inútil).
     const erroArquivo = validarArquivoImagem(arquivo);
     if (erroArquivo) {
+      setAviso(null);
       setErro(erroArquivo);
       return;
     }
@@ -185,7 +187,7 @@ const PaginaFormularioProduto = () => {
     setAviso(null);
     setEnviandoImagem(true);
     try {
-      const url = await enviarImagem(arquivo, "produtos");
+      const url = await enviarImagem(await prepararImagemProduto(arquivo), "produtos");
       setFotoUrl(url);
     } catch (err) {
       const tratado = tratarErroApi(err);
@@ -319,22 +321,23 @@ const PaginaFormularioProduto = () => {
                 <div
                   className={estilos.areaUpload}
                   role="button"
-                  tabIndex={0}
-                  onClick={() => arquivoInputRef.current?.click()}
+                  tabIndex={enviandoImagem ? -1 : 0}
+                  aria-label="Selecionar foto do produto"
+                  aria-disabled={enviandoImagem}
+                  aria-describedby="formato-foto-produto"
+                  onClick={() => !enviandoImagem && arquivoInputRef.current?.click()}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ")
-                      arquivoInputRef.current?.click();
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      if (!enviandoImagem) arquivoInputRef.current?.click();
+                    }
                   }}
                 >
                   {fotoUrl ? (
                     <img
                       src={fotoUrl}
                       alt={nome || "Imagem do produto"}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: 160,
-                        borderRadius: 8,
-                      }}
+                      className={estilos.previewImagem}
                     />
                   ) : (
                     <>
@@ -349,14 +352,18 @@ const PaginaFormularioProduto = () => {
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
+                    disabled={enviandoImagem}
                     ref={arquivoInputRef}
                     onChange={handleSelecionarImagem}
                     style={{ display: "none" }}
                   />
                 </div>
+                <small id="formato-foto-produto" className={estilos.ajudaImagem}>JPG, PNG ou WEBP até 5 MB. A foto será ajustada para 800 × 800 (1:1), sem cortes, com fundo branco.</small>
+                {enviandoImagem && <p role="status">Preparando e enviando imagem...</p>}
                 {fotoUrl && (
                   <button
                     type="button"
+                    disabled={enviandoImagem}
                     onClick={() => setFotoUrl("")}
                     style={{
                       marginTop: 8,

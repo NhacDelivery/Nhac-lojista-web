@@ -25,6 +25,7 @@ const PaginaListaFuncionarios = () => {
   const [funcionarios, setFuncionarios] = useState<FuncionarioResponseDTO[]>(
     [],
   );
+  const [alterandoId, setAlterandoId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(
@@ -63,10 +64,12 @@ const PaginaListaFuncionarios = () => {
   };
 
   const handleExcluir = async (id: string) => {
+    if (alterandoId) return;
+    setAlterandoId(id);
     try {
       await desativarFuncionario(id);
       setFuncionarios(
-        funcionarios.map((f) => (f.id === id ? { ...f, ativo: false } : f)),
+        atuais => atuais.map((f) => (f.id === id ? { ...f, ativo: false } : f)),
       );
       mostrarToast("Funcionário desativado.");
     } catch (err) {
@@ -75,20 +78,25 @@ const PaginaListaFuncionarios = () => {
         tratado.mensagemGeral ?? "Não foi possível desativar o funcionário.", { tipo: 'erro' });
     } finally {
       setConfirmandoExclusao(null);
+      setAlterandoId(null);
     }
   };
 
   const handleReativar = async (id: string) => {
+    if (alterandoId) return;
+    setAlterandoId(id);
     try {
       await reativarFuncionario(id);
       setFuncionarios(
-        funcionarios.map((f) => (f.id === id ? { ...f, ativo: true } : f)),
+        atuais => atuais.map((f) => (f.id === id ? { ...f, ativo: true } : f)),
       );
       mostrarToast("Funcionário reativado.");
     } catch (err) {
       const tratado = tratarErroApi(err);
       mostrarToast(
         tratado.mensagemGeral ?? "Não foi possível reativar o funcionário.", { tipo: 'erro' });
+    } finally {
+      setAlterandoId(null);
     }
   };
 
@@ -184,6 +192,7 @@ const PaginaListaFuncionarios = () => {
                         <td>
                           <div className={estilos.acoes}>
                             <Botao
+                              disabled={!!alterandoId}
                               aria-label={`Editar ${func.nomeCompleto}`}
                               variante="fantasma"
                               icone={<Edit2 size={18} />}
@@ -196,13 +205,16 @@ const PaginaListaFuncionarios = () => {
                                 aria-label={`Desativar ${func.nomeCompleto}`}
                                 variante="perigo"
                                 icone={<Trash2 size={18} />}
+                                disabled={!!alterandoId}
                                 onClick={() => setConfirmandoExclusao(func.id)}
                               />
                             ) : (
                               <Botao
+                                carregando={alterandoId === func.id}
                                 aria-label={`Reativar ${func.nomeCompleto}`}
                                 variante="secundario"
                                 icone={<RotateCcw size={18} />}
+                                disabled={!!alterandoId}
                                 onClick={() => handleReativar(func.id)}
                               />
                             )}
@@ -247,6 +259,7 @@ const PaginaListaFuncionarios = () => {
                     <div className={estilos.acoesMobile}>
                       <Botao
                         variante="secundario"
+                        disabled={!!alterandoId}
                         onClick={() => navigate(`/funcionarios/${func.id}`)}
                       >
                         Editar
@@ -254,13 +267,15 @@ const PaginaListaFuncionarios = () => {
                       {func.ativo ? (
                         <Botao
                           variante="perigo"
+                          disabled={!!alterandoId}
                           onClick={() => setConfirmandoExclusao(func.id)}
                         >
-                          Excluir
+                          Desativar
                         </Botao>
                       ) : (
                         <Botao
                           variante="secundario"
+                          disabled={!!alterandoId}
                           onClick={() => handleReativar(func.id)}
                         >
                           Reativar
@@ -277,6 +292,7 @@ const PaginaListaFuncionarios = () => {
 
       <ModalConfirmacao
         aberto={confirmandoExclusao !== null}
+        carregando={!!alterandoId}
         titulo="Desativar funcionário"
         mensagem="Isso bloqueia o login desse funcionário imediatamente. Tem certeza?"
         textoBotaoConfirmar="Desativar"

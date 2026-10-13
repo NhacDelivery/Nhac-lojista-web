@@ -112,3 +112,147 @@ test('cadastro concluído atualiza papel e abre configurações sem sair da cont
   await expect(page.getByRole('button', { name: 'Nome, categoria e descrição' })).toBeVisible();
   await expect(page.getByText('Acesso Negado', { exact: true })).toHaveCount(0);
 });
+
+async function sessaoLojista(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('@nhac:token', 'token-ux-local');
+    localStorage.setItem('@nhac:usuario', JSON.stringify({ id: 'dono-ux', nomeCompleto: 'Dono de teste', papel: 'LOJISTA', cargo: 'administrador' }));
+  });
+  await page.route('**/api/v1/**', async route => {
+    const url = route.request().url();
+    if (url.endsWith('/usuarios/dono-ux')) return route.fulfill({ json: { id: 'dono-ux', nome: 'Dono de teste', email: 'dono@exemplo.local', telefone: '11999998888', papel: 'LOJISTA' } });
+    if (url.endsWith('/lojas/minha-loja')) return route.fulfill({ json: { id: 'loja-ux', nome: 'Loja UX', imagemUrl: '/nhac-logo.png', aberta: true } });
+    if (url.includes('/lojista/funcionarios')) return route.fulfill({ json: { content: [] } });
+    return route.fulfill({ json: [] });
+  });
+}
+
+test('funcionário vazio tem avisos por campo, foco e nenhuma criação', async ({ page }) => {
+  await sessaoLojista(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  let criacoes = 0;
+  page.on('request', request => { if (request.method() === 'POST' && request.url().endsWith('/lojista/funcionarios')) criacoes++; });
+  await page.goto('/funcionarios/novo');
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveAccessibleName('Revise os campos indicados');
+  await expect(page.getByLabel('Nome Completo')).toBeFocused();
+  await expect(page.getByLabel('Telefone')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Cargo')).toHaveAttribute('aria-invalid', 'true');
+  await page.screenshot({ path: 'test-results/equipe-validacao-mobile.png', fullPage: true });
+  expect(criacoes).toBe(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('funcionário rejeitado pelo backend mantém dados e explica o campo', async ({ page }) => {
+  await sessaoLojista(page);
+  await page.route('**/lojista/funcionarios', route => route.fulfill({ status: 400, json: { status: 400, message: 'Dados inválidos.', details: { telefone: 'Telefone não disponível.' } } }));
+  await page.goto('/funcionarios/novo');
+  await page.getByLabel('Nome Completo').fill('Equipe 2');
+  await page.getByLabel('E-mail').fill('equipe@exemplo.local');
+  await page.getByLabel('Telefone').fill('11977776666');
+  await page.getByLabel('Cargo').selectOption('Atendente');
+  await page.getByLabel('Senha inicial').fill('Teste12345');
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Telefone não disponível.');
+  await expect(page.getByLabel('Telefone')).toBeFocused();
+  await expect(page.getByLabel('Nome Completo')).toHaveValue('Equipe 2');
+});
+
+test('funcionário inexistente bloqueia salvar', async ({ page }) => {
+  await sessaoLojista(page);
+  await page.goto('/funcionarios/inexistente');
+  await expect(page.getByRole('alert')).toHaveAccessibleName('Não encontramos esse registro');
+  await expect(page.getByRole('button', { name: 'Salvar', exact: true })).toBeDisabled();
+});
+
+test('telefone vazio não avança para SMS e logo usa superfície neutra', async ({ page }) => {
+  await sessaoLojista(page);
+  let sms = 0;
+  page.on('request', request => { if (request.url().includes('/verificacao-telefone/enviar-codigo')) sms++; });
+  await page.goto('/configuracoes/conta');
+  await page.getByRole('button', { name: 'Editar', exact: true }).nth(1).click();
+  await page.getByLabel('Novo telefone').fill('');
+  await page.getByRole('button', { name: 'Enviar código SMS', exact: true }).click();
+  await expect(page.getByLabel('Novo telefone')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Código SMS')).toHaveCount(0);
+  expect(sms).toBe(0);
+  const logo = page.getByRole('img', { name: 'Logo de Loja UX' }).first();
+  await expect(logo).toBeVisible();
+  expect(await logo.evaluate(el => getComputedStyle(el).objectFit)).toBe('contain');
+  expect(await logo.evaluate(el => getComputedStyle(el.parentElement!).backgroundColor)).toBe('rgb(255, 255, 255)');
+});
+
+test('produto normaliza foto retangular e mantém foto após arquivo corrompido', async ({ page }) => {
+  await sessaoLojista(page);
+  let uploads = 0;
+  await page.route('**/uploads/imagem', async route => {
+    uploads++;
+    const corpo = route.request().postDataBuffer()!;
+    const inicio = corpo.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
+    expect(inicio).toBeGreaterThan(0);
+    // O corpo multipart contém a saída JPEG, nunca a imagem de origem.
+    expect(corpo.toString('latin1')).toContain('image/jpeg');
+    const jpeg = corpo.subarray(inicio, corpo.lastIndexOf(Buffer.from([0xff, 0xd9])) + 2);
+    await page.route('**/foto-normalizada.jpg', r => r.fulfill({ body: jpeg, contentType: 'image/jpeg' }));
+    await route.fulfill({ json: { url: `${new URL(page.url()).origin}/foto-normalizada.jpg` } });
+  });
+  await page.goto('/produtos/novo');
+  const imagem = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 200;
+    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#00ff00'; ctx.fillRect(0, 0, 400, 200);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  const input = page.locator('input[type=file]');
+  await input.setInputFiles({ name: 'retangulo.png', mimeType: 'image/png', buffer: Buffer.from(imagem, 'base64') });
+  const foto = page.getByRole('img', { name: 'Imagem do produto', exact: true });
+  await expect(foto).toBeVisible();
+  await expect.poll(() => foto.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([800, 800]);
+  expect(await foto.evaluate(el => getComputedStyle(el).objectFit)).toBe('contain');
+  const cores = await foto.evaluate((el: HTMLImageElement) => {
+    const c = document.createElement('canvas'); c.width = c.height = 800;
+    const ctx = c.getContext('2d')!; ctx.drawImage(el, 0, 0);
+    return { margem: Array.from(ctx.getImageData(400, 50, 1, 1).data), centro: Array.from(ctx.getImageData(400, 400, 1, 1).data) };
+  });
+  expect(cores.margem.slice(0, 3)).toEqual([255, 255, 255]);
+  expect(cores.centro[1]).toBeGreaterThan(250);
+  expect(cores.centro[0]).toBeLessThan(5);
+  await page.screenshot({ path: 'test-results/produto-imagem-quadrada.png', fullPage: true });
+  await input.setInputFiles({ name: 'quebrada.png', mimeType: 'image/png', buffer: Buffer.from('arquivo corrompido') });
+  await expect(page.getByRole('alert')).toContainText('Selecione um arquivo JPG, PNG ou WEBP');
+  await expect(foto).toBeVisible();
+  expect(uploads).toBe(1);
+  await input.setInputFiles({ name: 'grande.png', mimeType: 'image/png', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
+  await expect(page.getByRole('alert')).toContainText('5 MB');
+  expect(uploads).toBe(1);
+});
+
+test('desativação tem confirmação acessível, foco e bloqueio enquanto salva', async ({ page }) => {
+  await sessaoLojista(page);
+  await page.route('**/lojista/funcionarios?**', route => route.fulfill({ json: { content: [{ id: 'equipe-ux', nomeCompleto: 'Equipe UX', email: 'equipe@exemplo.local', cargo: 'Atendente', telefone: '11988887777', ativo: true, dataCadastro: '2026-10-01T12:00:00Z' }] } }));
+  let concluir!: () => void;
+  const aguardando = new Promise<void>(resolve => { concluir = resolve; });
+  let pedidos = 0;
+  await page.route('**/lojista/funcionarios/equipe-ux', async route => {
+    pedidos++;
+    await aguardando;
+    await route.fulfill({ status: 204 });
+  });
+  await page.goto('/funcionarios');
+  const desativar = page.getByRole('button', { name: 'Desativar Equipe UX' });
+  await desativar.click();
+  const modal = page.getByRole('dialog', { name: 'Desativar funcionário' });
+  await expect(modal.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(modal.getByRole('button', { name: 'Desativar', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+  await expect(desativar).toBeFocused();
+  await desativar.click();
+  await modal.getByRole('button', { name: 'Desativar', exact: true }).click();
+  await expect(modal.getByTestId('confirmation-submit')).toBeDisabled();
+  await expect(modal.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+  expect(pedidos).toBe(1);
+  concluir();
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Reativar Equipe UX' })).toBeVisible();
+});

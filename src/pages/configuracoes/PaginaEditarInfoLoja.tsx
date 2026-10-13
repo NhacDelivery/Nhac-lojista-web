@@ -36,7 +36,7 @@ const PaginaEditarInfoLoja = () => {
   const handleTrocarFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const arquivo = e.target.files?.[0];
     e.target.value = '';
-    if (!arquivo) return;
+    if (!arquivo || enviandoFoto) return;
 
     // Mesmas regras do backend: JPG/PNG/WEBP até 5 MB.
     const erroArquivo = validarArquivoImagem(arquivo);
@@ -105,7 +105,7 @@ const PaginaEditarInfoLoja = () => {
 
         <Cartao className={estilos.secao}>
           <div className={estilos.linhaFoto}>
-            <Avatar nome={nome || loja.nome} fotoUrl={imagemUrl || undefined} tamanho="medio" />
+            <Avatar tipo="logo" nome={nome || loja.nome} fotoUrl={imagemUrl || undefined} tamanho="medio" />
             <div className={estilos.infoFoto}>
               <span className={estilos.tituloFoto}>Foto ou logo da loja</span>
               <button
@@ -118,11 +118,13 @@ const PaginaEditarInfoLoja = () => {
               </button>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={enviandoFoto}
                 ref={arquivoRef}
                 onChange={handleTrocarFoto}
                 style={{ display: 'none' }}
               />
+              <small>JPG, PNG ou WEBP até 5 MB. A logo aparece inteira sobre fundo branco.</small>
               {erroFoto && (
                 <AvisoFormulario mensagem={erroFoto} />
               )}
