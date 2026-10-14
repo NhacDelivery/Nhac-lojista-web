@@ -22,6 +22,7 @@ async function preencherCadastro(page: Page) {
   await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page.getByLabel('Código de verificação').fill('123456');
   await page.getByLabel('Nome da Loja').fill('Loja preservada');
+  await page.getByLabel('CPF do responsável').fill('52998224725');
   await page.getByLabel('Categoria Principal').selectOption({ index: 1 });
   await page.getByPlaceholder('Fale um pouco sobre sua loja e o que você oferece...').fill('Lanches preparados para os testes de cadastro.');
   await page.getByLabel('Logo da Loja').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: png });
@@ -97,6 +98,8 @@ test('cadastro concluído atualiza papel e abre configurações sem sair da cont
     if (url.endsWith('/auth/registrar')) return route.fulfill({ json: { accessToken: 'token-teste', usuarioId: 'novo-dono', nome: 'Pessoa de Teste', papel: 'CLIENTE' } });
     if (url.endsWith('/uploads/imagem')) return route.fulfill({ json: { url: 'https://exemplo.local/logo.png' } });
     if (url.endsWith('/lojas') && route.request().method() === 'POST') {
+      expect(route.request().postDataJSON().cpfResponsavel).toBe('52998224725');
+      expect(route.request().headers().authorization).toBe('Bearer token-teste');
       loja = { ...route.request().postDataJSON(), id: 'loja-teste' };
       return route.fulfill({ json: { id: 'loja-teste' } });
     }
@@ -288,4 +291,49 @@ test('desativação tem confirmação acessível, foco e bloqueio enquanto salva
   concluir();
   await expect(modal).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Reativar Equipe UX' })).toBeVisible();
+});
+
+test('CPF duplicado volta ao responsável e preserva a loja após criar a conta', async ({ page }) => {
+  await interceptar(page);
+  let registros = 0;
+  await page.route('**/api/v1/**', async route => {
+    const url = route.request().url();
+    if (url.endsWith('/auth/registrar')) {
+      registros++;
+      return route.fulfill({ json: { token: 'token-teste', usuarioId: 'novo-dono', nome: 'Pessoa de Teste', papel: 'CLIENTE' } });
+    }
+    if (url.endsWith('/uploads/imagem')) return route.fulfill({ json: { url: 'https://exemplo.local/logo.png' } });
+    if (url.endsWith('/usuarios/novo-dono')) return route.fulfill({ json: { id: 'novo-dono', nome: 'Pessoa de Teste', papel: 'CLIENTE' } });
+    if (url.endsWith('/lojas/minha-loja')) return route.fulfill({ status: 404, json: { message: 'Loja não encontrada.' } });
+    if (url.endsWith('/lojas') && route.request().method() === 'POST') {
+      return route.fulfill({ status: 400, json: { message: 'Este CPF já está em uso por outra conta.' } });
+    }
+    return route.fallback();
+  });
+  await preencherCadastro(page);
+  await page.getByRole('button', { name: 'Confirmar e Finalizar' }).click();
+  await expect(page.getByLabel('CPF do responsável')).toBeFocused();
+  await expect(page.getByLabel('CPF do responsável')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Nome da Loja')).toHaveValue('Loja preservada');
+  expect(registros).toBe(1);
+});
+
+test('conta existente exige CPF válido antes de cadastrar a loja no celular', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem('@nhac:token', 'token-existente');
+    localStorage.setItem('@nhac:usuario', JSON.stringify({ id: 'cliente', papel: 'CLIENTE' }));
+  });
+  await page.route('**/api/v1/**', route => route.request().url().endsWith('/usuarios/cliente')
+    ? route.fulfill({ json: { id: 'cliente', nome: 'Responsável existente', papel: 'CLIENTE' } })
+    : route.fulfill({ status: 404, json: { message: 'Loja não encontrada.' } }));
+  await page.goto('/onboarding-loja');
+  await page.getByLabel('Nome da Loja').fill('Loja existente');
+  await page.getByLabel('Categoria Principal').selectOption({ index: 1 });
+  await page.getByLabel('CPF do responsável').fill('11111111111');
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await expect(page.getByLabel('CPF do responsável')).toBeFocused();
+  await expect(page.getByLabel('CPF do responsável')).toHaveAttribute('aria-invalid', 'true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/cpf-onboarding-mobile.png', fullPage: true });
 });

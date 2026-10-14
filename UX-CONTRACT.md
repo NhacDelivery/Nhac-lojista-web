@@ -74,3 +74,7 @@ Bean Validation é traduzida em mensagens de campo em português. 403 explica ac
 - Equipe: nome e cargo obrigatórios; criação exige e-mail, telefone com DDD e senha de oito caracteres com letra/número. Edição preserva telefone quando vazio. Validar antes de enviar; falha da API mantém valores, mostra resumo persistente e erros por campo. Edição de registro não encontrado bloqueia salvar. O servidor continua responsável por autorização e unicidade.
 - Telefone da conta: código SMS só aparece após envio bem-sucedido para o número preenchido. Dois campos vazios nunca significam código enviado.
 - Evidência: regressões de equipe, SMS, layout estreito, logo e upload real por canvas em `e2e/avisos.spec.ts`; integração com backend em `e2e/equipe-sessao.spec.ts` e `e2e/configuracoes.spec.ts`.
+
+## CPF e vínculo no cadastro da loja
+
+O CPF do responsável usa `InputTexto`, `mascaraCpfCnpj` limitada a 11 dígitos e `validarCpf` na etapa Dados da Loja, nos dois modos de cadastro. O POST autenticado envia `cpfResponsavel` somente com dígitos. O backend salva CPF, cargo ADMINISTRADOR e vínculo no usuário, com o dono da loja obtido do token. O perfil é recarregado após a criação. Erros de CPF retornam à etapa da loja, preservam o formulário e focam o campo. CPF não é exposto no catálogo nem persistido no armazenamento do navegador.

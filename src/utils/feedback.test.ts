@@ -46,3 +46,9 @@ describe('avisos dos fluxos do lojista', () => {
     expect(aviso.mensagem).not.toContain('fetch');
   });
 });
+
+test('CPF duplicado aponta o responsável sem sugerir criar outra conta', () => {
+  const aviso = descreverAviso({ status: 400, message: 'Este CPF já está em uso por outra conta.' });
+  expect(aviso.campos).toHaveProperty('cpfResponsavel');
+  expect(aviso.titulo).toBe('CPF já utilizado');
+});

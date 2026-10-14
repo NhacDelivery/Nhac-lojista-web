@@ -11,7 +11,7 @@ export interface AvisoModelo {
 
 const rotulos: Record<string, string> = {
   nomeLoja: 'Nome da loja', descricaoLoja: 'Descrição da loja', categoriaLoja: 'Categoria principal', termos: 'Termos de uso', pagamentos: 'Formas de pagamento',
-  nome: 'Nome', nomeCompleto: 'Nome completo', email: 'E-mail', telefone: 'Telefone',
+  cpfResponsavel: 'CPF do responsável', cpf: 'CPF', cpfCnpj: 'CPF/CNPJ', nome: 'Nome', nomeCompleto: 'Nome completo', email: 'E-mail', telefone: 'Telefone',
   senha: 'Senha', senhaAtual: 'Senha atual', confirmarSenha: 'Confirmação da senha',
   codigo: 'Código de verificação', codigoTelefone: 'Código recebido por SMS',
   preco: 'Preço', estoque: 'Estoque', categoria: 'Categoria', descricao: 'Descrição',
@@ -58,6 +58,11 @@ export function descreverAviso(erro: unknown): AvisoModelo {
   if (status === 429 || /muitas tentativas|aguarde.*reenviar/i.test(texto)) return {
     ...base, titulo: 'Aguarde para tentar novamente', mensagem: 'Foram feitas várias tentativas em pouco tempo.',
     orientacao: 'Espere o contador terminar antes de enviar outro código ou tentar entrar.', tom: 'aviso',
+  };
+  if (/cpf/i.test(texto) && /já está em uso|já (?:está )?cadastrad/i.test(texto)) return {
+    ...base, titulo: 'CPF já utilizado', mensagem: 'Esse CPF já está vinculado a outra conta do Nhac.',
+    orientacao: 'Confira o CPF do responsável antes de tentar novamente.',
+    campos: { cpfResponsavel: 'Informe o CPF do responsável por esta conta.' },
   };
   if ((/já está em uso|já (?:está )?cadastrad|já existe/i.test(texto)) && /telefone|e-mail|email/i.test(texto)) {
     const telefone = m.includes('telefone');
