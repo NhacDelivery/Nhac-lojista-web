@@ -70,7 +70,7 @@ Bean Validation é traduzida em mensagens de campo em português. 403 explica ac
 ## Imagens, equipe e confirmação de telefone
 
 - Logo: variante `logo` do Avatar, superfície branca e imagem inteira. Avatar de pessoa mantém sua apresentação própria.
-- Produto: entradas JPG/PNG/WEBP até 5 MB; novos uploads pelo painel saem como JPEG 800 × 800 (1:1), sem recorte ou distorção, com fundo branco. Arquivo ilegível não é enviado. Imagens antigas são contidas em moldura quadrada. Essa normalização é do painel; o backend continua validando MIME e tamanho.
+- Produto: entradas JPG/PNG/WEBP até 5 MB; novos uploads pelo painel saem como JPEG 800 × 800 (1:1), com zoom proporcional e recorte central para preencher o quadrado, sem distorção nem barras brancas. Arquivo ilegível não é enviado. Imagens antigas são contidas em moldura quadrada. Essa normalização é do painel; o backend continua validando MIME e tamanho.
 - Equipe: nome e cargo obrigatórios; criação exige e-mail, telefone com DDD e senha de oito caracteres com letra/número. Edição preserva telefone quando vazio. Validar antes de enviar; falha da API mantém valores, mostra resumo persistente e erros por campo. Edição de registro não encontrado bloqueia salvar. O servidor continua responsável por autorização e unicidade.
 - Telefone da conta: código SMS só aparece após envio bem-sucedido para o número preenchido. Dois campos vazios nunca significam código enviado.
 - Evidência: regressões de equipe, SMS, layout estreito, logo e upload real por canvas em `e2e/avisos.spec.ts`; integração com backend em `e2e/equipe-sessao.spec.ts` e `e2e/configuracoes.spec.ts`.
