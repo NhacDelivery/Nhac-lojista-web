@@ -30,9 +30,6 @@ export async function prepararImagemProduto(arquivo: File): Promise<File> {
       throw new Error('Não conseguimos preparar a imagem. Tente outro navegador.');
     }
 
-    // Usa "cover" para preencher o quadrado sem deixar bordas brancas.
-    // Em vez de encaixar a imagem inteira dentro do espaço, aumenta a escala
-    // até cobrir o quadro e cortar as extremidades quando necessário.
     const escala = Math.max(tamanho / imagem.naturalWidth, tamanho / imagem.naturalHeight);
     const largura = imagem.naturalWidth * escala;
     const altura = imagem.naturalHeight * escala;
@@ -47,11 +44,13 @@ export async function prepararImagemProduto(arquivo: File): Promise<File> {
       altura,
     );
 
-    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
-      resultado => resultado ? resolve(resultado) : reject(new Error('Não conseguimos preparar a imagem. Selecione novamente.')),
-      'image/jpeg',
-      0.9,
-    ));
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        resultado => resultado ? resolve(resultado) : reject(new Error('Não conseguimos preparar a imagem. Selecione novamente.')),
+        'image/jpeg',
+        0.9,
+      );
+    });
 
     return new File(
       [blob],
