@@ -182,49 +182,82 @@ test('telefone vazio não avança para SMS e logo usa superfície neutra', async
   expect(await logo.evaluate(el => getComputedStyle(el.parentElement!).backgroundColor)).toBe('rgb(255, 255, 255)');
 });
 
-test('produto normaliza foto retangular e mantém foto após arquivo corrompido', async ({ page }) => {
-  await sessaoLojista(page);
-  let uploads = 0;
-  await page.route('**/uploads/imagem', async route => {
-    uploads++;
-    const corpo = route.request().postDataBuffer()!;
-    const inicio = corpo.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
-    expect(inicio).toBeGreaterThan(0);
-    // O corpo multipart contém a saída JPEG, nunca a imagem de origem.
-    expect(corpo.toString('latin1')).toContain('image/jpeg');
-    const jpeg = corpo.subarray(inicio, corpo.lastIndexOf(Buffer.from([0xff, 0xd9])) + 2);
-    await page.route('**/foto-normalizada.jpg', r => r.fulfill({ body: jpeg, contentType: 'image/jpeg' }));
-    await route.fulfill({ json: { url: `${new URL(page.url()).origin}/foto-normalizada.jpg` } });
+for (const orientacao of ['horizontal', 'vertical'] as const) {
+  test(`produto recorta foto ${orientacao} com zoom e mantém foto após arquivo corrompido`, async ({ page }) => {
+    await sessaoLojista(page);
+    let uploads = 0;
+    await page.route('**/uploads/imagem', async route => {
+      uploads++;
+      const corpo = route.request().postDataBuffer()!;
+      const inicio = corpo.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
+      expect(inicio).toBeGreaterThan(0);
+      // O corpo multipart contém a saída JPEG, nunca a imagem de origem.
+      expect(corpo.toString('latin1')).toContain('image/jpeg');
+      const jpeg = corpo.subarray(inicio, corpo.lastIndexOf(Buffer.from([0xff, 0xd9])) + 2);
+      await page.route('**/foto-normalizada.jpg', r => r.fulfill({ body: jpeg, contentType: 'image/jpeg' }));
+      await route.fulfill({ json: { url: `${new URL(page.url()).origin}/foto-normalizada.jpg` } });
+    });
+    await page.goto('/produtos/novo');
+    const imagem = await page.evaluate(orientacao => {
+      const canvas = document.createElement('canvas');
+      canvas.width = orientacao === 'horizontal' ? 400 : 200;
+      canvas.height = orientacao === 'horizontal' ? 200 : 400;
+      const ctx = canvas.getContext('2d')!;
+      // Faixas externas devem sair do recorte; o centro permanece quadrado.
+      ctx.fillStyle = '#ff0000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0000ff';
+      if (orientacao === 'horizontal') ctx.fillRect(300, 0, 100, 200);
+      else ctx.fillRect(0, 300, 200, 100);
+      ctx.fillStyle = '#00ff00';
+      ctx.fillRect((canvas.width - 200) / 2, (canvas.height - 200) / 2, 200, 200);
+      ctx.fillStyle = '#ff00ff';
+      ctx.fillRect((canvas.width - 40) / 2, (canvas.height - 40) / 2, 40, 40);
+      return canvas.toDataURL('image/png').split(',')[1];
+    }, orientacao);
+    const input = page.locator('input[type=file]');
+    await input.setInputFiles({ name: 'retangulo.png', mimeType: 'image/png', buffer: Buffer.from(imagem, 'base64') });
+    const foto = page.getByRole('img', { name: 'Imagem do produto', exact: true });
+    await expect(foto).toBeVisible();
+    await expect.poll(() => foto.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([800, 800]);
+    expect(await foto.evaluate(el => getComputedStyle(el).objectFit)).toBe('contain');
+    const cores = await foto.evaluate((el: HTMLImageElement) => {
+      const c = document.createElement('canvas'); c.width = c.height = 800;
+      const ctx = c.getContext('2d')!; ctx.drawImage(el, 0, 0);
+      const pixel = (x: number, y: number) => Array.from(ctx.getImageData(x, y, 1, 1).data);
+      return {
+        bordas: [[40, 40], [760, 40], [40, 760], [760, 760], [400, 50], [50, 400]].map(([x, y]) => pixel(x, y)),
+        marca: [[400, 400], [340, 400], [400, 340], [460, 400], [400, 460]].map(([x, y]) => pixel(x, y)),
+        foraDaMarca: [[300, 400], [400, 300], [500, 400], [400, 500]].map(([x, y]) => pixel(x, y)),
+      };
+    });
+    const verde = (pixel: number[]) => {
+      // JPEG pode alterar levemente as cores: verificar canais com tolerância.
+      expect(pixel[0]).toBeLessThan(10);
+      expect(pixel[1]).toBeGreaterThan(245);
+      expect(pixel[2]).toBeLessThan(10);
+      expect(pixel[3]).toBe(255);
+    };
+    cores.bordas.forEach(verde); // Preenchimento completo, sem barras nem faixas externas.
+    cores.foraDaMarca.forEach(verde);
+    for (const pixel of cores.marca) {
+      expect(pixel[0]).toBeGreaterThan(245);
+      expect(pixel[1]).toBeLessThan(10);
+      expect(pixel[2]).toBeGreaterThan(245);
+    } // A marca continua central e quadrada, sem esticar a proporção.
+    const fotoAnterior = await foto.getAttribute('src');
+    await page.screenshot({ path: `test-results/produto-imagem-quadrada-${orientacao}.png`, fullPage: true });
+    await input.setInputFiles({ name: 'quebrada.png', mimeType: 'image/png', buffer: Buffer.from('arquivo corrompido') });
+    await expect(page.getByRole('alert')).toContainText('Selecione um arquivo JPG, PNG ou WEBP');
+    await expect(foto).toBeVisible();
+    await expect(foto).toHaveAttribute('src', fotoAnterior!);
+    expect(uploads).toBe(1);
+    await input.setInputFiles({ name: 'grande.png', mimeType: 'image/png', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
+    await expect(page.getByRole('alert')).toContainText('5 MB');
+    await expect(foto).toHaveAttribute('src', fotoAnterior!);
+    expect(uploads).toBe(1);
   });
-  await page.goto('/produtos/novo');
-  const imagem = await page.evaluate(() => {
-    const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 200;
-    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#00ff00'; ctx.fillRect(0, 0, 400, 200);
-    return canvas.toDataURL('image/png').split(',')[1];
-  });
-  const input = page.locator('input[type=file]');
-  await input.setInputFiles({ name: 'retangulo.png', mimeType: 'image/png', buffer: Buffer.from(imagem, 'base64') });
-  const foto = page.getByRole('img', { name: 'Imagem do produto', exact: true });
-  await expect(foto).toBeVisible();
-  await expect.poll(() => foto.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([800, 800]);
-  expect(await foto.evaluate(el => getComputedStyle(el).objectFit)).toBe('contain');
-  const cores = await foto.evaluate((el: HTMLImageElement) => {
-    const c = document.createElement('canvas'); c.width = c.height = 800;
-    const ctx = c.getContext('2d')!; ctx.drawImage(el, 0, 0);
-    return { margem: Array.from(ctx.getImageData(400, 50, 1, 1).data), centro: Array.from(ctx.getImageData(400, 400, 1, 1).data) };
-  });
-  expect(cores.margem.slice(0, 3)).toEqual([255, 255, 255]);
-  expect(cores.centro[1]).toBeGreaterThan(250);
-  expect(cores.centro[0]).toBeLessThan(5);
-  await page.screenshot({ path: 'test-results/produto-imagem-quadrada.png', fullPage: true });
-  await input.setInputFiles({ name: 'quebrada.png', mimeType: 'image/png', buffer: Buffer.from('arquivo corrompido') });
-  await expect(page.getByRole('alert')).toContainText('Selecione um arquivo JPG, PNG ou WEBP');
-  await expect(foto).toBeVisible();
-  expect(uploads).toBe(1);
-  await input.setInputFiles({ name: 'grande.png', mimeType: 'image/png', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
-  await expect(page.getByRole('alert')).toContainText('5 MB');
-  expect(uploads).toBe(1);
-});
+
+}
 
 test('desativação tem confirmação acessível, foco e bloqueio enquanto salva', async ({ page }) => {
   await sessaoLojista(page);
