@@ -63,7 +63,7 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({
           telefone: perfil.telefone,
           fotoUrl: perfil.imagemUrl,
           cargo: mapearCargo(perfil.papel, perfil.cargo),
-          lojaId: salvo.lojaId ?? "",
+          lojaId: perfil.lojaVinculadaId ?? salvo.lojaId ?? "",
         };
         setUsuario(atualizado);
         localStorage.setItem("@nhac:usuario", JSON.stringify(atualizado));
@@ -120,7 +120,7 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({
       fotoUrl: perfil.imagemUrl,
       papel: perfil.papel,
       cargo: mapearCargo(perfil.papel, perfil.cargo),
-      lojaId: usuario?.lojaId ?? "",
+      lojaId: perfil.lojaVinculadaId ?? usuario?.lojaId ?? "",
     });
   };
 
@@ -138,6 +138,7 @@ export const ProvedorAutenticacao: React.FC<{ children: ReactNode }> = ({
       const perfil = await buscarUsuario(autenticado.id);
       const completo = {
         ...autenticado,
+        lojaId: perfil.lojaVinculadaId ?? "",
         papel: perfil.papel,
         cargo: mapearCargo(perfil.papel, perfil.cargo),
         nomeCompleto: perfil.nome,

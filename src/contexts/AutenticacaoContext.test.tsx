@@ -29,10 +29,10 @@ async function preparar(papel: string, cargo: string | null = null) {
 test('após criar loja consulta papel do servidor e libera configurações sem novo login', async () => {
   await preparar('CLIENTE');
   expect(screen.getByText('Acesso Negado')).toBeInTheDocument();
-  (buscarUsuario as jest.Mock).mockResolvedValue(perfil('LOJISTA'));
+  (buscarUsuario as jest.Mock).mockResolvedValue({ ...perfil('LOJISTA'), lojaVinculadaId: 'loja-criada' });
   fireEvent.click(screen.getByRole('button', { name: 'Loja criada' }));
   await screen.findByText('Configurações disponíveis');
-  expect(JSON.parse(localStorage.getItem('@nhac:usuario') || '{}')).toMatchObject({ papel: 'LOJISTA', cargo: 'administrador' });
+  expect(JSON.parse(localStorage.getItem('@nhac:usuario') || '{}')).toMatchObject({ papel: 'LOJISTA', cargo: 'administrador', lojaId: 'loja-criada' });
 });
 test('funcionário administrador continua sem acesso às configurações do dono', async () => {
   await preparar('FUNCIONARIO', 'administrador');
@@ -44,7 +44,7 @@ test('funcionário administrador continua sem acesso às configurações do dono
 test('login usa papel atual do perfil mesmo se resposta de login estiver desatualizada', async () => {
   await preparar('CLIENTE');
   (login as jest.Mock).mockResolvedValue({ usuarioId: 'u-1', nome: 'Dono', papel: 'CLIENTE', accessToken: 'novo-token' });
-  (buscarUsuario as jest.Mock).mockResolvedValue(perfil('LOJISTA'));
+  (buscarUsuario as jest.Mock).mockResolvedValue({ ...perfil('LOJISTA'), lojaVinculadaId: 'loja-criada' });
   fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
   await screen.findByText('Configurações disponíveis');
 });

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import estilos from './PaginaCadastro.module.css';
 import { Botao, InputTexto, Seletor, Toggle, Checkbox, IndicadorEtapas, Cartao } from '../../components/ui';
-import { mascaraTelefone, mascaraCep, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
+import { mascaraTelefone, mascaraCep, mascaraCpfCnpj, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
 import { CATEGORIAS_LOJA } from '../../dados/categorias';
 import { registrar, criarLoja, buscarCep as apiBuscarCep, enviarCodigoCadastro, checarEmail, enviarImagem } from '../../services/api';
 import VerificacaoEmail from '../../components/autenticacao/VerificacaoEmail';
@@ -25,6 +25,7 @@ import {
   validarSenhaCadastro,
   validarConfirmarSenha,
   validarNomeLoja,
+  validarCpf,
   validarDescricaoLoja,
   validarCategoria,
   validarCep,
@@ -136,6 +137,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   }, [bloqueadoEnvioAte]);
 
   // Etapa 0 — Dados Pessoais
+  const [cpfResponsavel, setCpfResponsavel] = useState('');
   const [nomeCompleto, setNomeCompleto] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -250,9 +252,10 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
 
   const validarEtapaLoja = () => {
     const novosErros = validarFormulario(
-      { nomeLoja, descricaoLoja, categoriaLoja },
+      { nomeLoja, descricaoLoja, categoriaLoja, cpfResponsavel },
       {
         nomeLoja: validarNomeLoja,
+        cpfResponsavel: validarCpf,
         descricaoLoja: validarDescricaoLoja,
         categoriaLoja: validarCategoria,
       }
@@ -398,6 +401,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
 
     return {
       nome: nomeLoja,
+      cpfResponsavel: soDigitos(cpfResponsavel),
       imagemUrl,
       descricao: descricaoLoja || '',
       categoria: categoriaLoja,
@@ -517,7 +521,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       const tratado = tratarErroApi(err);
       setAviso(tratado.aviso || null);
       const campos = Object.fromEntries(Object.entries(tratado.errosCampos || {}).map(([campo, mensagem]) => [
-        campo === 'nome' ? (contaJaCriada || modo === 'apenas-loja' ? 'nomeLoja' : 'nomeCompleto') : campo.split('.').pop() || campo,
+        campo === 'cpfCnpj' || campo === 'cpf' ? 'cpfResponsavel' : campo === 'nome' ? (contaJaCriada || modo === 'apenas-loja' ? 'nomeLoja' : 'nomeCompleto') : campo.split('.').pop() || campo,
         mensagem,
       ]));
       setErros({ ...campos, geral: tratado.mensagemGeral || 'Revise os dados para continuar.' });
@@ -529,7 +533,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         const etapa = ['nomeCompleto', 'email', 'telefone', 'senha'].includes(campo) && !contaJaCriada ? indices.DADOS
           : ['cep', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'uf', 'complemento'].includes(campo) ? indices.ENDERECO
           : ['raioEntregaKm', 'taxaEntregaBase', 'tempoEntregaMin', 'tempoEntregaMax'].includes(campo) ? indices.ENTREGA
-          : ['nomeLoja', 'descricao', 'categoria', 'imagemUrl'].includes(campo) ? indices.LOJA : -1;
+          : ['nomeLoja', 'descricao', 'categoria', 'imagemUrl', 'cpfResponsavel'].includes(campo) ? indices.LOJA : -1;
         if (etapa >= 0) { setEtapaAtual(etapa); setCampoParaFoco(campo); }
       }
     } finally {
@@ -797,6 +801,18 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                   onBlur={() => tocarCampo('nomeLoja', nomeLoja, validarNomeLoja)}
                 />
 
+              <InputTexto
+                name="cpfResponsavel"
+                rotulo="CPF do responsável"
+                valor={cpfResponsavel}
+                aoMudar={setCpfResponsavel}
+                mascara={mascaraCpfCnpj}
+                inputMode="numeric"
+                maxLength={14}
+                erro={erros.cpfResponsavel}
+                onBlur={() => tocarCampo('cpfResponsavel', cpfResponsavel, validarCpf)}
+                obrigatorio
+              />
               <Seletor
                 rotulo="Categoria Principal"
                 opcoes={CATEGORIAS_LOJA.map(c => ({ valor: c, rotulo: c }))}

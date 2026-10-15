@@ -209,6 +209,7 @@ export interface LoginResponseDTO {
 }
 
 export interface UsuarioResponseDTO {
+  lojaVinculadaId?: string | null;
   id: string;
   nome: string;
   email: string;
@@ -393,6 +394,7 @@ export interface FormasPagamentoDTO {
 }
 
 export interface LojaCreateDTO {
+  cpfResponsavel?: string;
   nome: string;
   imagemUrl: string;
   descricao: string;
