@@ -1,6 +1,6 @@
 # Painel lojista na Vercel
 
-Backend: https://backend-nhac.onrender.com
+Backend: https://backend-nhac.cloud.run
 
 Configuração do projeto `nhac-lojista-web`:
 
@@ -11,7 +11,7 @@ Configuração do projeto `nhac-lojista-web`:
 - `REACT_APP_WS_URL=/ws`.
 - `REACT_APP_WS_TRANSPORTS=xhr-polling`.
 
-`vercel.json` encaminha API e SockJS ao Render e mantém as rotas do React
+`vercel.json` encaminha API e SockJS ao Cloud Run e mantém as rotas do React
 funcionando após recarregar a página. O middleware retira o Origin do salto
 servidor a servidor, preserva o Authorization e impede cache das respostas.
 O backend continua responsável por autenticação e autorização.
