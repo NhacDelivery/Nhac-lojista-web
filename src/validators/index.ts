@@ -17,7 +17,6 @@
  *  - Código de verificação: 6 dígitos, expira em 15 minutos.
  */
 
-// ==================== Tipos e helpers ====================
 
 export type Validador<T = string> = (valor: T) => string | null;
 
@@ -72,7 +71,6 @@ export function obrigatorio(mensagem: string): Validador {
   return (valor) => (limparTexto(valor) ? null : mensagem);
 }
 
-// ==================== Autenticação / Cadastro ====================
 
 /** Nome completo — obrigatório, 3–100 caracteres, sem números/símbolos. */
 export const validarNome: Validador = (valor) => {

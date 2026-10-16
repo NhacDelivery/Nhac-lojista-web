@@ -89,12 +89,7 @@ const PaginaPainel = () => {
     return `${data.getDate()}/${data.getMonth() + 1}`;
   };
 
-  /**
-   * Antes, esse toggle era só estado local (nunca persistia). Agora chama a
-   * rota dedicada PATCH /lojas/{id}/abertura — não precisa reenviar a loja
-   * inteira (diferente do PUT, que exige o payload completo e poderia
-   * sobrescrever dados se o contexto estivesse desatualizado).
-   */
+  /** Usa PATCH /lojas/{id}/abertura para não sobrescrever os demais dados da loja. */
   const handleAlternarLojaAberta = async (novoValor: boolean) => {
     if (!loja) return;
     setAlterandoStatusLoja(true);

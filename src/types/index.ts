@@ -1,4 +1,3 @@
-// ==================== Usuário e Autenticação ====================
 
 // Cargo exibido no painel. `cliente` é o estado temporário de uma conta
 // recém-criada que ainda não cadastrou sua loja; ele não recebe permissões
@@ -21,7 +20,6 @@ export interface DadosLogin {
   senha: string;
 }
 
-// ==================== Loja ====================
 
 export interface Loja {
   id: string;
@@ -70,7 +68,6 @@ export interface FormasPagamento {
   valeAlimentacao: boolean;
 }
 
-// ==================== Cadastro (Wizard) ====================
 
 export interface DadosCadastroEtapa1 {
   nomeCompleto: string;
@@ -98,7 +95,6 @@ export interface DadosCadastroEtapa5 {
 
 export type DadosCadastroEtapa6 = FormasPagamento;
 
-// ==================== Produtos ====================
 
 export interface Adicional {
   id: string;
@@ -126,7 +122,6 @@ export interface Produto {
   adicionais?: GrupoAdicional[];
 }
 
-// ==================== Funcionários ====================
 
 export interface Funcionario {
   id: string;
@@ -139,7 +134,6 @@ export interface Funcionario {
   dataCadastro: string;
 }
 
-// ==================== Pedidos ====================
 
 export type StatusPedido =
   | "PENDENTE"
@@ -171,7 +165,6 @@ export interface Pedido {
   observacoes?: string;
 }
 
-// ==================== Chat ====================
 
 export interface Mensagem {
   id: string;
@@ -195,7 +188,6 @@ export interface Conversa {
   dataUltimaMensagem: string;
 }
 
-// ==================== Financeiro ====================
 
 export interface DadosFaturamento {
   data: string;
@@ -231,7 +223,6 @@ export interface ResumoFinanceiro {
 
 export type FiltroPeriodo = "hoje" | "7dias" | "30dias" | "personalizado";
 
-// ==================== Navegação ====================
 
 export interface ItemMenu {
   rotulo: string;

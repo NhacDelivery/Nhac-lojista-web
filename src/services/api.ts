@@ -166,7 +166,6 @@ function extrairToken(resposta: {
   return resposta.accessToken ?? resposta.token ?? "";
 }
 
-// ==================== Autenticação ====================
 
 /**
  * DTO real do backend (RegistroRequestDTO):
@@ -309,7 +308,6 @@ export async function checarEmail(
   });
 }
 
-// ==================== Recuperação / Alteração de senha ====================
 
 /**
  * Solicita código de recuperação por e-mail
@@ -353,7 +351,6 @@ export async function alterarSenha(
   });
 }
 
-// ==================== Loja ====================
 
 export interface EnderecoLojaDTO {
   cep: string;
@@ -527,7 +524,6 @@ export async function calcularFrete(
   );
 }
 
-// ==================== Uploads (Firebase Storage via backend) ====================
 
 /** Pastas aceitas pelo backend (UploadService.PASTAS_PERMITIDAS). */
 export type PastaUpload = "lojas" | "produtos";
@@ -554,7 +550,6 @@ export async function enviarImagem(
   return resposta.url;
 }
 
-// ==================== Produtos ====================
 
 export interface PaginaSpring<T> {
   content: T[];
@@ -703,14 +698,8 @@ export async function resumoAvaliacoesProduto(
   return requisicao<ResumoAvaliacoesDTO>(`/produtos/${id}/avaliacoes/resumo`);
 }
 
-// ==================== Pedidos ====================
 
-/**
- * GET /lojista/pedidos — desde a correção do backend (Round 20), retorna
- * clienteNome + quantidadeItens em vez de lojaId/lojaNome (que eram sempre
- * a própria loja de quem está logado — inútil e causava o bug de mostrar o
- * nome da loja no lugar do cliente na listagem).
- */
+/** GET /lojista/pedidos retorna clienteNome e quantidadeItens. */
 export interface PedidoResumoLojistaDTO {
   id: string;
   clienteNome: string;
@@ -740,11 +729,7 @@ export interface ItemPedidoDTO {
   adicionais?: string[];
 }
 
-/**
- * GET /lojista/pedidos/{id} — novo nesta rodada (antes não existia; GET
- * /pedidos/{id} só autorizava o cliente comprador). Já vem com clienteNome/
- * clienteTelefone, que o lojista precisa pra atender o pedido.
- */
+/** GET /lojista/pedidos/{id} inclui clienteNome e clienteTelefone. */
 export interface PedidoDetalheLojistaDTO {
   id: string;
   clienteNome: string;
@@ -788,22 +773,14 @@ export async function listarPedidosPagina(filtros?: {
   return pagina;
 }
 
-/**
- * Detalhe de pedido para o lojista.
- * GET /lojista/pedidos/{id} — novo nesta rodada.
- */
+/** Detalhe de pedido para o lojista: GET /lojista/pedidos/{id}. */
 export async function buscarPedido(
   id: string,
 ): Promise<PedidoDetalheLojistaDTO> {
   return requisicao<PedidoDetalheLojistaDTO>(`/lojista/pedidos/${id}`);
 }
 
-/**
- * Atualiza status de um pedido
- * PATCH /pedidos/{id}/status
- * (O cancelamento pelo painel passa por aqui com status "CANCELADO" — o
- * backend agora devolve o estoque nesse caminho também, ver Round 20.)
- */
+/** Atualiza status de um pedido: PATCH /pedidos/{id}/status. */
 export async function atualizarStatusPedido(
   id: string,
   status: string,
@@ -831,9 +808,6 @@ export async function cancelarPedido(id: string): Promise<void> {
   });
 }
 
-// ==================== Funcionários ====================
-// Novo nesta rodada (Round 20): funcionário é uma conta com login próprio,
-// cargo é só rótulo (sem RBAC real), o lojista define a senha no cadastro.
 
 export interface FuncionarioResponseDTO {
   id: string;
@@ -909,7 +883,6 @@ export async function reativarFuncionario(
   );
 }
 
-// ==================== Usuário (conta do lojista) ====================
 
 /**
  * Dados editáveis da própria conta (UsuarioAtualizarDTO).
@@ -977,8 +950,6 @@ export async function atualizarPreferenciasNotificacao(
   );
 }
 
-// ==================== Painel (Dashboard) ====================
-// Novo nesta rodada (Round 20). GET /lojista/painel.
 
 export interface FaturamentoDiaDTO {
   data: string;
@@ -1000,12 +971,7 @@ export async function buscarPainel(): Promise<PainelResumoDTO> {
   return requisicao<PainelResumoDTO>("/lojista/painel");
 }
 
-// ==================== Financeiro ====================
-// Novo nesta rodada (Round 20). GET /lojista/financeiro?periodo=...
-// Atenção: o backend expõe faturamentoPeriodo (um valor só, referente ao
-// período selecionado), não faturamentoDia + faturamentoMes simultâneos
-// como o mock antigo do frontend tinha — por isso o tipo aqui é o contrato
-// real da API, não o antigo `ResumoFinanceiro` de `types/index.ts`.
+// A API expõe faturamentoPeriodo, referente apenas ao período selecionado.
 
 export type PeriodoFinanceiro = "HOJE" | "SETE_DIAS" | "TRINTA_DIAS";
 
@@ -1065,10 +1031,7 @@ export async function buscarFinanceiro(
   return requisicao<FinanceiroDTO>(`/lojista/financeiro?periodo=${periodo}`);
 }
 
-// ==================== Chat (histórico via REST) ====================
-// Novo nesta rodada (Round 20). Envio de mensagem em tempo real é via
-// WebSocket — ver services/chatSocket.ts. Isso aqui é só o histórico e a
-// listagem de conversas.
+// Envio em tempo real via services/chatSocket.ts; REST fornece o histórico.
 
 export type RemetenteTipo = "CLIENTE" | "LOJA" | "ENTREGADOR";
 
@@ -1127,7 +1090,6 @@ export async function marcarConversaComoLida(
   });
 }
 
-// ==================== Utilitários ====================
 
 /**
  * Busca CEP via ViaCEP
