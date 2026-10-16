@@ -12,12 +12,7 @@ interface PropsSeletorImagem {
   rotulo?: string;
 }
 
-/**
- * Clica -> abre o seletor de arquivo do SO -> envia pro backend
- * (POST /uploads/imagem, Firebase Storage) -> devolve a URL pronta pro
- * campo imagemUrl de loja/produto. Antes disso não existia nenhum <input
- * type="file"> real em lugar nenhum do painel — só áreas decorativas.
- */
+/** Envia a imagem para POST /uploads/imagem e devolve a URL persistente. */
 const SeletorImagem: React.FC<PropsSeletorImagem> = ({
   valor,
   aoEnviar,

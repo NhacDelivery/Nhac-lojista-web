@@ -162,11 +162,7 @@ const PaginaFormularioProduto = () => {
     }
   }, [id]);
 
-  /**
-   * Sobe a imagem para o Firebase Storage via POST /uploads/imagem e guarda a
-   * URL persistente devolvida pelo backend. Antes desta integração nenhuma
-   * imagem era enviada (só existia a área visual de upload).
-   */
+  /** Envia a imagem para POST /uploads/imagem e guarda a URL persistente. */
   const handleSelecionarImagem = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {

@@ -162,7 +162,6 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
   const { status, codigo, mensagem, errosCampos } = erro;
   const m = mensagem.toLowerCase();
 
-  // ---------- 401: credenciais OU sessão expirada ----------
   if (status === 401) {
     if (m.includes("senha atual")) return { mensagemGeral: mensagem };
     // Login com credenciais inválidas → mensagem genérica (não revelar qual campo errou)
@@ -180,7 +179,6 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     };
   }
 
-  // ---------- 429: rate limit de login / envio de código ----------
   if (status === 429) {
     return {
       rateLimit: true,
@@ -189,7 +187,6 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     };
   }
 
-  // ---------- 400: regra de negócio / validação ----------
   if (status === 400) {
     if (errosCampos && Object.keys(errosCampos).length > 0) {
       return { errosCampos, mensagemGeral: mensagem };
@@ -216,7 +213,6 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     return { mensagemGeral: mensagem };
   }
 
-  // ---------- 403: acesso negado (permissão — NÃO deslogar) ----------
   if (status === 403) {
     if (m.includes("não é o dono") || m.includes("não tem permissão")) {
       return {
@@ -227,7 +223,6 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     return { mensagemGeral: mensagem || "Acesso negado." };
   }
 
-  // ---------- 404 ----------
   if (status === 404) {
     if (
       m.includes("loja do usuário não encontrada") ||
@@ -238,7 +233,6 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     return { mensagemGeral: mensagem };
   }
 
-  // ---------- 409: conflito (transição de status, lock, e-mail em uso) ----------
   if (status === 409) {
     if (
       codigo === "TRANSICAO_STATUS_INVALIDA" ||
@@ -259,12 +253,10 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     return { toastGenerico: true, mensagemGeral: mensagem };
   }
 
-  // ---------- 422: estado inválido ----------
   if (status === 422) {
     return { toastGenerico: true, mensagemGeral: mensagem };
   }
 
-  // ---------- 503 ----------
   if (status === 503) {
     return {
       toastGenerico: true,
@@ -273,7 +265,6 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     };
   }
 
-  // ---------- 500 ----------
   if (status >= 500) {
     return {
       toastGenerico: true,

@@ -28,11 +28,7 @@ const PaginaEditarInfoLoja = () => {
   const [erro, setErro] = useState('');
   const arquivoRef = useRef<HTMLInputElement>(null);
 
-  /**
-   * Sobe a nova logo para o Firebase Storage via POST /uploads/imagem
-   * (pasta "lojas") e guarda a URL persistente. Antes o botão "Alterar foto"
-   * não fazia nada — não havia como trocar a imagem da loja depois do cadastro.
-   */
+  /** Envia a logo para POST /uploads/imagem, pasta "lojas", e guarda a URL. */
   const handleTrocarFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const arquivo = e.target.files?.[0];
     e.target.value = '';

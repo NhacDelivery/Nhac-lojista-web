@@ -1,5 +1,5 @@
 /**
- * Cliente WebSocket (STOMP) do chat — Round 20.
+ * Cliente WebSocket (STOMP) do chat.
  * Backend: /ws (SockJS) em WebSocketConfig, autenticação dentro do frame
  * STOMP CONNECT (não no handshake HTTP — WebSocket nativo do browser não
  * permite headers customizados no handshake, mas o protocolo STOMP permite
