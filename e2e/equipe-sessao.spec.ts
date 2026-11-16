@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiAutenticada, entrar, identificador, senha } from "./helpers";
+import { abrirPainelAutenticado, apiAutenticada, apiDaSessao, entrar, identificador, senha } from "./helpers";
 
 test.beforeEach(() => {
   test.skip(process.env.RUN_E2E !== "true", "Execute com backend E2E isolado.");
@@ -41,7 +41,7 @@ test("cadastra e edita funcionário, desativa login e reativa a mesma conta", as
 }) => {
   const nome = `Equipe ${identificador()}`;
   const email = `e2e-${identificador()}@nhac.local`;
-  await entrar(page);
+  await abrirPainelAutenticado(page);
   await page.goto("/funcionarios/novo");
   await page.getByLabel(/Nome Completo/).fill(nome);
   await page.getByLabel(/E-mail/).fill(email);
@@ -139,7 +139,7 @@ for (const cargo of ["Atendente", "Administrador"]) {
           page.getByRole("button", { name: "Salvar", exact: true }),
         ).toHaveCount(0);
       }
-      const staff = await apiAutenticada(email);
+      const staff = await apiDaSessao(page);
       try {
         expect((await staff.get('lojista/funcionarios')).status()).toBe(403);
         expect((await staff.get('lojista/produtos')).status()).toBe(cargo === 'Administrador' ? 200 : 403);

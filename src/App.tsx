@@ -22,6 +22,7 @@ import PaginaFinanceiro from "./pages/financeiro/PaginaFinanceiro";
 import PaginaListaPedidos from "./pages/pedidos/PaginaListaPedidos";
 import PaginaDetalhePedido from "./pages/pedidos/PaginaDetalhePedido";
 import PaginaInformacaoLoja from "./pages/configuracoes/PaginaInformacaoLoja";
+import PaginaEditarBannerLoja from "./pages/configuracoes/PaginaEditarBannerLoja";
 import PaginaEditarInfoLoja from "./pages/configuracoes/PaginaEditarInfoLoja";
 import PaginaConfiguracoesConta from "./pages/configuracoes/PaginaConfiguracoesConta";
 import PaginaEnderecoLoja from "./pages/configuracoes/PaginaEnderecoLoja";
@@ -199,6 +200,14 @@ function App() {
                 element={
                   <RotaProtegidaComLoja somenteDono cargosPermitidos={["administrador"]}>
                     <PaginaEditarInfoLoja />
+                  </RotaProtegidaComLoja>
+                }
+              />
+              <Route
+                path="/configuracoes/banner"
+                element={
+                  <RotaProtegidaComLoja somenteDono cargosPermitidos={["administrador"]}>
+                    <PaginaEditarBannerLoja />
                   </RotaProtegidaComLoja>
                 }
               />

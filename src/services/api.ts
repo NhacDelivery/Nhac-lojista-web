@@ -395,6 +395,7 @@ export interface FormasPagamentoDTO {
 
 export interface LojaCreateDTO {
   cpfResponsavel?: string;
+  bannerUrl?: string | null;
   nome: string;
   imagemUrl: string;
   descricao: string;
@@ -435,7 +436,7 @@ export async function atualizarLocalizacaoLoja(
  *
  * Payload completo (todos obrigatórios exceto `complemento` e os opcionais
  * de `dadosOperacionais`/`formasPagamento`): nome, descricao, categoria,
- * imagemUrl, isAberto, dadosOperacionais{taxaEntregaBase, tempoEntregaMin,
+ * imagemUrl, bannerUrl (opcional), isAberto, dadosOperacionais{taxaEntregaBase, tempoEntregaMin,
  * tempoEntregaMax, entregaPropria, retiradaNoLocal, raioEntregaKm},
  * endereco{rua, numero, cidade, estado, cep, bairro, complemento?},
  * horarios{domingo..sabado}, formasPagamento{6 flags}.
@@ -480,6 +481,14 @@ export async function atualizarLoja(
   return requisicao<LojaResponseDTO>(`/lojas/${id}`, {
     method: "PUT",
     body: JSON.stringify(dados),
+  });
+}
+
+/** Atualiza a capa pública da loja. */
+export async function atualizarBannerLoja(id: string, bannerUrl: string): Promise<LojaResponseDTO> {
+  return requisicao<LojaResponseDTO>(`/lojas/${encodeURIComponent(id)}/banner`, {
+    method: "PATCH",
+    body: JSON.stringify({ bannerUrl }),
   });
 }
 

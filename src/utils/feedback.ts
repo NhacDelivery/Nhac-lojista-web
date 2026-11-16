@@ -15,7 +15,7 @@ const rotulos: Record<string, string> = {
   senha: 'Senha', senhaAtual: 'Senha atual', confirmarSenha: 'Confirmação da senha',
   codigo: 'Código de verificação', codigoTelefone: 'Código recebido por SMS',
   preco: 'Preço', estoque: 'Estoque', categoria: 'Categoria', descricao: 'Descrição',
-  imagemUrl: 'Imagem', cep: 'CEP', rua: 'Rua', numero: 'Número', bairro: 'Bairro',
+  imagemUrl: 'Imagem', bannerUrl: 'Banner da loja', cep: 'CEP', rua: 'Rua', numero: 'Número', bairro: 'Bairro',
   cidade: 'Cidade', estado: 'Estado', uf: 'Estado', cargo: 'Cargo',
   tempoEntregaMin: 'Tempo mínimo de entrega', tempoEntregaMax: 'Tempo máximo de entrega',
   raioEntregaKm: 'Raio de entrega', taxaEntregaBase: 'Taxa de entrega', adicionais: 'Adicionais',

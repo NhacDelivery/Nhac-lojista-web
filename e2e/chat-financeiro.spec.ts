@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { apiAutenticada, entrar, identificador } from "./helpers";
+import { abrirPainelAutenticado, apiAutenticada, identificador } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   test.skip(process.env.RUN_E2E !== "true", "Execute com backend E2E isolado.");
-  await entrar(page);
+  await abrirPainelAutenticado(page);
 });
 
 test("chat recebe mensagem do cliente, envia via WebSocket e recupera o histórico", async ({

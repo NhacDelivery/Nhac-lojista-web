@@ -12,10 +12,20 @@ if (process.env.RUN_E2E === "true" && senha.length < 12) {
     "Defina E2E_PASSWORD temporária de pelo menos 12 caracteres.",
   );
 }
+const emailLojista = "e2e.lojista@nhac.local";
+const contasFixture = [
+  emailLojista,
+  "e2e.pedido@nhac.local",
+  "e2e.cliente@nhac.local",
+];
+
+type Sessao = { token: string; usuarioId: string; nome: string };
+const chaveSessoes = "E2E_SESSOES_FIXTURE";
+
 export const identificador = () => randomUUID();
 export async function entrar(
   page: Page,
-  email = "e2e.lojista@nhac.local",
+  email = emailLojista,
   password = senha,
 ) {
   await page.goto("/login");
@@ -24,20 +34,62 @@ export async function entrar(
   await page.getByTestId("e2e.login.submit").click();
   await expect(page).not.toHaveURL(/\/login$/);
 }
-export async function apiAutenticada(
-  email = "e2e.lojista@nhac.local",
-): Promise<APIRequestContext> {
+async function autenticar(email: string): Promise<Sessao> {
   const auth = await request.newContext({ baseURL: `${apiURL}/` });
-  const response = await auth.post("auth/login", { data: { email, senha } });
-  expect(response.ok()).toBeTruthy();
-  const data = await response.json();
-  await auth.dispose();
+  try {
+    const response = await auth.post("auth/login", { data: { email, senha } });
+    expect(response.status(), `Login E2E para ${email}`).toBe(200);
+    const data = await response.json();
+    const token = data.accessToken || data.token;
+    expect(token, `Token E2E para ${email}`).toBeTruthy();
+    return { token, usuarioId: data.usuarioId, nome: data.nome };
+  } finally {
+    await auth.dispose();
+  }
+}
+
+export async function prepararSessoesFixture() {
+  const sessoes: Record<string, Sessao> = {};
+  for (const email of contasFixture) {
+    sessoes[email] = await autenticar(email);
+  }
+  // O Playwright repassa o ambiente do globalSetup aos workers, inclusive nos retries.
+  process.env[chaveSessoes] = JSON.stringify(sessoes);
+}
+
+function sessaoFixture(email: string): Sessao | undefined {
+  const sessoes = JSON.parse(process.env[chaveSessoes] || "{}") as Record<string, Sessao>;
+  return sessoes[email];
+}
+
+export async function abrirPainelAutenticado(page: Page) {
+  const sessao = sessaoFixture(emailLojista);
+  if (!sessao) throw new Error("Sessão da loja E2E não preparada.");
+  await page.goto("/login");
+  await page.evaluate(({ token, usuarioId, nome }) => {
+    localStorage.setItem("@nhac:token", token);
+    localStorage.setItem("@nhac:usuario", JSON.stringify({ id: usuarioId, nomeCompleto: nome }));
+  }, sessao);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Painel", exact: true })).toBeVisible();
+}
+
+function apiComToken(token: string): Promise<APIRequestContext> {
   return request.newContext({
     baseURL: `${apiURL}/`,
-    extraHTTPHeaders: {
-      Authorization: `Bearer ${data.accessToken || data.token}`,
-    },
+    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
   });
+}
+
+export async function apiAutenticada(email = emailLojista): Promise<APIRequestContext> {
+  const sessao = sessaoFixture(email) ?? await autenticar(email);
+  return apiComToken(sessao.token);
+}
+
+export async function apiDaSessao(page: Page): Promise<APIRequestContext> {
+  const token = await page.evaluate(() => localStorage.getItem("@nhac:token"));
+  if (!token) throw new Error("O painel E2E não tem sessão ativa.");
+  return apiComToken(token);
 }
 export async function produto(
   api: APIRequestContext,

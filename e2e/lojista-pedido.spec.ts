@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiAutenticada, entrar, novoPedido } from "./helpers";
+import { abrirPainelAutenticado, apiAutenticada, novoPedido } from "./helpers";
 
 test.beforeEach(() => {
   test.skip(process.env.RUN_E2E !== "true", "Execute com backend E2E isolado.");
@@ -21,7 +21,7 @@ test("recebe um pedido real, inicia preparo e impede concluir a entrega pelo loj
     item = { produtoId: id, nome: 'Produto E2E', adicionais: [salvo.adicionais[0].itens[0].id] };
   } finally { await lojista.dispose(); }
   const pedido = await novoPedido(item);
-  await entrar(page);
+  await abrirPainelAutenticado(page);
   await page.goto("/pedidos");
   const cartao = page.getByTestId(`e2e.order.${pedido.id}`);
   await expect(cartao).toBeVisible();
@@ -83,7 +83,7 @@ test("cancelamento só acontece ao confirmar e persiste após recarregar", async
   page,
 }) => {
   const pedido = await novoPedido();
-  await entrar(page);
+  await abrirPainelAutenticado(page);
   await page.goto(`/pedidos/${pedido.id}`);
   await page
     .getByRole("button", { name: "Cancelar pedido", exact: true })
@@ -104,7 +104,7 @@ test("cancelamento só acontece ao confirmar e persiste após recarregar", async
 test("pedido inexistente mostra recuperação sem controles de alteração", async ({
   page,
 }) => {
-  await entrar(page);
+  await abrirPainelAutenticado(page);
   await page.goto("/pedidos/inexistente");
   await expect(
     page.getByRole("button", { name: "Voltar para pedidos" }),

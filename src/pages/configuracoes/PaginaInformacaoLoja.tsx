@@ -6,7 +6,7 @@ import Avatar from '../../components/ui/Avatar';
 import ModalConfirmacao from '../../components/ui/ModalConfirmacao';
 import { useLoja } from '../../contexts/LojaContext';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
-import { Store, CreditCard, MapPin, Settings, LogOut, ChevronRight } from 'lucide-react';
+import { Store, Image, CreditCard, MapPin, Settings, LogOut, ChevronRight } from 'lucide-react';
 import estilos from './PaginaInformacaoLoja.module.css';
 
 interface ItemAtalho {
@@ -17,6 +17,7 @@ interface ItemAtalho {
 
 const ITENS_LOJA: ItemAtalho[] = [
   { icone: Store, rotulo: 'Nome, categoria e descrição', caminho: '/configuracoes/editar' },
+  { icone: Image, rotulo: 'Banner da loja', caminho: '/configuracoes/banner' },
   { icone: CreditCard, rotulo: 'Formas de pagamento', caminho: '/configuracoes/pagamentos' },
   { icone: MapPin, rotulo: 'Endereço da loja', caminho: '/configuracoes/endereco' },
   { icone: Settings, rotulo: 'Configurações da conta', caminho: '/configuracoes/conta' },
