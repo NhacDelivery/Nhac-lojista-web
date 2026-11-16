@@ -1,0 +1,38 @@
+.seletor {
+  display: grid;
+  gap: 8px;
+}
+
+.rotulo {
+  font-weight: 600;
+}
+
+.previa {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border: 1px dashed var(--nhac-borda);
+  border-radius: 12px;
+  background: var(--nhac-fundo);
+  color: var(--nhac-texto-claro);
+}
+
+.previa img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.erro {
+  color: var(--nhac-erro, #e53935);
+}

@@ -13,6 +13,7 @@ import { Botao, InputTexto, Seletor, Toggle, Checkbox, IndicadorEtapas, Cartao }
 import { mascaraTelefone, mascaraCep, mascaraCpfCnpj, ESTADOS_BRASILEIROS } from '../../utils/formatacao';
 import { CATEGORIAS_LOJA } from '../../dados/categorias';
 import { registrar, criarLoja, buscarCep as apiBuscarCep, enviarCodigoCadastro, checarEmail, enviarImagem } from '../../services/api';
+import SeletorBannerLoja from '../../components/ui/SeletorBannerLoja';
 import VerificacaoEmail from '../../components/autenticacao/VerificacaoEmail';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
 import { useLoja } from '../../contexts/LojaContext';
@@ -150,6 +151,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
 
   // Etapa 1 — Dados da Loja (antiga etapa 2)
   const [fotoUrl, setFotoUrl] = useState('');
+  const [bannerArquivo, setBannerArquivo] = useState<File | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string>();
   const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState('');
   const [enviandoLogo, setEnviandoLogo] = useState(false);
@@ -395,7 +398,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     window.scrollTo(0, 0);
   };
 
-  const montarPayloadLoja = (imagemUrl: string) => {
+  const montarPayloadLoja = (imagemUrl: string, banner?: string) => {
     const serializarHorario = (dia: { aberto: boolean; abertura: string; fechamento: string }) =>
       dia.aberto ? `${dia.abertura} - ${dia.fechamento}` : 'Fechado';
 
@@ -403,6 +406,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       nome: nomeLoja,
       cpfResponsavel: soDigitos(cpfResponsavel),
       imagemUrl,
+      bannerUrl: banner,
       descricao: descricaoLoja || '',
       categoria: categoriaLoja,
       isAberto: true,
@@ -505,7 +509,19 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       }
 
       if (!lojaCriadaNestaSessao.current) {
-        await criarLoja(montarPayloadLoja(imagemUrl));
+        let capa = bannerUrl;
+        if (bannerArquivo && !capa) {
+          try {
+            capa = await enviarImagem(bannerArquivo, 'lojas');
+            setBannerUrl(capa);
+          } catch (erro) {
+            const tratado = tratarErroApi(erro);
+            setErros({ bannerUrl: tratado.mensagemGeral || 'Não foi possível enviar o banner.' });
+            setEtapaAtual(indices.LOJA);
+            return;
+          }
+        }
+        await criarLoja(montarPayloadLoja(imagemUrl, capa));
         lojaCriadaNestaSessao.current = true;
       }
       await atualizarPerfil(idParaAtualizar);
@@ -533,7 +549,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         const etapa = ['nomeCompleto', 'email', 'telefone', 'senha'].includes(campo) && !contaJaCriada ? indices.DADOS
           : ['cep', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'uf', 'complemento'].includes(campo) ? indices.ENDERECO
           : ['raioEntregaKm', 'taxaEntregaBase', 'tempoEntregaMin', 'tempoEntregaMax'].includes(campo) ? indices.ENTREGA
-          : ['nomeLoja', 'descricao', 'categoria', 'imagemUrl', 'cpfResponsavel'].includes(campo) ? indices.LOJA : -1;
+          : ['nomeLoja', 'descricao', 'categoria', 'imagemUrl', 'bannerUrl', 'cpfResponsavel'].includes(campo) ? indices.LOJA : -1;
         if (etapa >= 0) { setEtapaAtual(etapa); setCampoParaFoco(campo); }
       }
     } finally {
@@ -791,15 +807,27 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 )}
               </div>
               
-                <InputTexto
-                  rotulo="Nome da Loja"
-                  valor={nomeLoja}
-                  aoMudar={setNomeLoja}
-                  icone={<Store size={18} />}
-                  erro={erros.nomeLoja}
-                  obrigatorio
-                  onBlur={() => tocarCampo('nomeLoja', nomeLoja, validarNomeLoja)}
-                />
+              <SeletorBannerLoja
+                arquivo={bannerArquivo}
+                opcional
+                desabilitado={carregando}
+                erro={erros.bannerUrl}
+                aoSelecionar={(arquivo) => {
+                  setBannerArquivo(arquivo);
+                  setBannerUrl(undefined);
+                  setErros((anteriores) => ({ ...anteriores, bannerUrl: '' }));
+                }}
+              />
+
+              <InputTexto
+                rotulo="Nome da Loja"
+                valor={nomeLoja}
+                aoMudar={setNomeLoja}
+                icone={<Store size={18} />}
+                erro={erros.nomeLoja}
+                obrigatorio
+                onBlur={() => tocarCampo('nomeLoja', nomeLoja, validarNomeLoja)}
+              />
 
               <InputTexto
                 name="cpfResponsavel"
@@ -1081,6 +1109,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
                 <h4 className={estilos.revisaoTitulo}>Dados da Loja</h4>
                 <div className={estilos.revisaoItem}><span>Nome</span><strong>{nomeLoja || '—'}</strong></div>
                 <div className={estilos.revisaoItem}><span>Categoria</span><strong>{categoriaLoja || '—'}</strong></div>
+                {bannerArquivo && <div className={estilos.revisaoItem}><span>Banner da loja</span><strong>{bannerArquivo.name}</strong></div>}
                 {descricaoLoja && <div className={estilos.revisaoItem}><span>Descrição</span><strong>{descricaoLoja}</strong></div>}
               </div>
 
