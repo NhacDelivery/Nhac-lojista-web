@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { apiAutenticada, entrar, identificador, produto } from "./helpers";
+import { abrirPainelAutenticado, apiAutenticada, identificador, produto } from "./helpers";
 import { pngTeste } from "./setup";
 
 test.beforeEach(async ({ page }) => {
   test.skip(process.env.RUN_E2E !== "true", "Execute com backend E2E isolado.");
-  await entrar(page);
+  await abrirPainelAutenticado(page);
 });
 
 test("valida campos na tela e não envia um produto inválido", async ({

@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { apiAutenticada, entrar, novoPedido } from './helpers';
+import { abrirPainelAutenticado, apiAutenticada, novoPedido } from './helpers';
 
 test.beforeEach(() => {
   test.skip(process.env.RUN_E2E !== 'true', 'Execute com backend E2E isolado.');
@@ -30,7 +30,7 @@ test('pedido percorre cliente, lojista e motoboy até entrega e aparece concluí
 
     const pedido = await novoPedido();
     pedidoId = pedido.id;
-    await entrar(page);
+    await abrirPainelAutenticado(page);
     await page.goto(`/pedidos/${pedidoId}`);
     await expect(page.getByTestId('e2e.order.status')).toContainText('Confirmar');
     for (const rotulo of ['Pago', 'Em preparo']) {

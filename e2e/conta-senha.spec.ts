@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { apiAutenticada, entrar, senha } from './helpers';
+import { abrirPainelAutenticado, apiAutenticada, entrar, senha } from './helpers';
 
 test.beforeEach(() => {
   test.skip(process.env.RUN_E2E !== 'true', 'Execute com backend E2E isolado.');
@@ -10,7 +10,7 @@ test('troca senha pela tela, rejeita a anterior e permite novo login preservando
   const novaSenha = `${senha}Nova1`;
   let alterada = false;
   try {
-    await entrar(page);
+    await abrirPainelAutenticado(page);
     await page.goto('/configuracoes/conta');
     await page.getByRole('button', { name: 'Alterar', exact: true }).click();
     await page.getByLabel('Senha atual', { exact: true }).fill(senha);

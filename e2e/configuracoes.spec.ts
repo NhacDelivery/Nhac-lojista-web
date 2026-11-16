@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { apiAutenticada, codigoSmsMock, entrar, senha } from "./helpers";
+import { abrirPainelAutenticado, apiAutenticada, codigoSmsMock, senha } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   test.skip(process.env.RUN_E2E !== "true", "Execute com backend E2E isolado.");
-  await entrar(page);
+  await abrirPainelAutenticado(page);
 });
 
 test("abertura persiste sem sobrescrever o cadastro da loja", async ({

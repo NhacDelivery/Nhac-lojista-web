@@ -1,5 +1,5 @@
 import { expect } from "@playwright/test";
-import { apiAutenticada } from "./helpers";
+import { apiAutenticada, prepararSessoesFixture } from "./helpers";
 
 export const pngTeste = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yTzUAAAAASUVORK5CYII=",
@@ -8,6 +8,7 @@ export const pngTeste = Buffer.from(
 
 export default async function preparar() {
   if (process.env.RUN_E2E !== "true") return;
+  await prepararSessoesFixture();
   const api = await apiAutenticada();
   try {
     const loja = await (await api.get("lojas/minha-loja")).json();
