@@ -10,7 +10,9 @@ jest.mock('react-router-dom', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 jest.mock('../../components/layout/LayoutPagina', () =>
-  ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
+  function MockLayoutPagina({ children }: { children: React.ReactNode }) {
+    return <main>{children}</main>;
+  },
 );
 jest.mock('../../hooks/useAutenticacao', () => ({
   useAutenticacao: () => ({ usuario: { id: 'usuario-1' }, atualizarPerfil: jest.fn() }),
