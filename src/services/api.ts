@@ -768,6 +768,7 @@ export interface PedidoDetalheLojistaDTO {
   formaPagamento: string;
   trocoPara: number | null;
   observacao: string | null;
+  justificativaDesistenciaEntrega?: string | null;
   status: string;
   criadoEm: string;
   enderecoEntrega: EnderecoEntregaPedidoDTO | null;
