@@ -72,7 +72,7 @@ export function descreverAviso(erro: unknown): AvisoModelo {
       campos: { [telefone ? 'telefone' : 'email']: telefone ? 'Informe outro número ou entre na conta existente.' : 'Use outro e-mail ou entre na conta existente.' },
       sugerirLogin: true, tom: 'aviso' };
   }
-  if (/e-mail não verificado|verifique seu e-mail|confirme seu e-mail/i.test(texto)) return {
+  if (/e-mail não verificado|verifique seu e-mail|confirme seu e-mail|confirmação de e-mail inválida/i.test(texto)) return {
     ...base, titulo: 'Confirme seu e-mail', mensagem: 'A confirmação do e-mail precisa estar válida para concluir o cadastro.',
     orientacao: 'Volte à etapa de verificação. Se o código expirou, solicite outro.', tom: 'aviso',
   };

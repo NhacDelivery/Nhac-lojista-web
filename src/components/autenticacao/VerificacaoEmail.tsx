@@ -7,13 +7,13 @@ import {
   enviarCodigoCadastro,
   confirmarEmailCadastro,
 } from '../../services/api';
-import { marcarEmailVerificado, tratarErroApi } from '../../utils/errosApi';
+import { tratarErroApi } from '../../utils/errosApi';
 import { validarCodigoVerificacao, soDigitos } from '../../validators';
 import estilos from './VerificacaoEmail.module.css';
 
 interface PropsVerificacaoEmail {
   email: string;
-  onVerificado: () => void;
+  onVerificado: (tokenCadastro: string) => void;
   enviarCodigoAoMontar?: boolean;
 }
 
@@ -108,9 +108,8 @@ export default function VerificacaoEmail({
 
     setCarregando(true);
     try {
-      await confirmarEmailCadastro(email, valor);
-      marcarEmailVerificado(email);
-      onVerificado();
+      const tokenCadastro = await confirmarEmailCadastro(email, valor);
+      onVerificado(tokenCadastro);
     } catch (err) {
       const tratado = tratarErroApi(err);
       if (tratado.erroCodigo) {

@@ -5,6 +5,7 @@ async function interceptar(page: Page, falhaRegistro = 'Este telefone já está 
   await page.route('**/api/v1/**', async route => {
     const url = route.request().url();
     if (url.endsWith('/auth/checar-email')) return route.fulfill({ json: { existe: false } });
+    if (url.endsWith('/auth/confirmar-email-cadastro')) return route.fulfill({ json: { tokenCadastro: 'prova-cadastro-inicial' } });
     if (url.endsWith('/auth/registrar')) return route.fulfill({ status: 400, json: { status: 400, error: 'REGRA_DE_NEGOCIO', message: falhaRegistro, details: {} } });
     if (url.endsWith('/auth/login')) return route.fulfill({ status: 401, json: { status: 401, error: 'CREDENCIAIS_INVALIDAS', message: 'E-mail não encontrado ou senha inválida.' } });
     return route.fulfill({ status: 200, body: '', contentType: 'application/json' });
@@ -90,12 +91,26 @@ test('sem conexão explica recuperação e não mostra Failed to fetch', async (
   await expect(page.getByRole('alert')).not.toContainText('Failed to fetch');
 });
 
-test('cadastro concluído atualiza papel e abre configurações sem sair da conta', async ({ page }) => {
+test('renova confirmação vencida na revisão e conclui cadastro com a nova prova', async ({ page }) => {
   await interceptar(page);
   let loja: Record<string, unknown> | null = null;
+  let registros = 0;
   await page.route('**/api/v1/**', async route => {
     const url = route.request().url();
-    if (url.endsWith('/auth/registrar')) return route.fulfill({ json: { accessToken: 'token-teste', usuarioId: 'novo-dono', nome: 'Pessoa de Teste', papel: 'CLIENTE' } });
+    if (url.endsWith('/auth/confirmar-email-cadastro') && registros > 0) {
+      expect(route.request().postDataJSON()).toEqual({ email: 'cadastro@exemplo.local', codigo: '012345' });
+      return route.fulfill({ json: { tokenCadastro: 'prova-cadastro-renovada' } });
+    }
+    if (url.endsWith('/auth/registrar')) {
+      registros++;
+      expect(route.request().postDataJSON().tokenCadastro).toBe(
+        registros === 1 ? 'prova-cadastro-inicial' : 'prova-cadastro-renovada',
+      );
+      if (registros === 1) {
+        return route.fulfill({ status: 400, json: { message: 'Confirmação de e-mail inválida, expirada ou já utilizada.' } });
+      }
+      return route.fulfill({ json: { accessToken: 'token-teste', usuarioId: 'novo-dono', nome: 'Pessoa de Teste', papel: 'CLIENTE' } });
+    }
     if (url.endsWith('/uploads/imagem')) return route.fulfill({ json: { url: 'https://exemplo.local/logo.png' } });
     if (url.endsWith('/lojas') && route.request().method() === 'POST') {
       expect(route.request().postDataJSON().cpfResponsavel).toBe('52998224725');
@@ -109,7 +124,13 @@ test('cadastro concluído atualiza papel e abre configurações sem sair da cont
   });
   await preencherCadastro(page);
   await page.getByRole('button', { name: 'Confirmar e Finalizar' }).click();
+  await expect(page.getByRole('alert')).toHaveAccessibleName('Confirme seu e-mail');
+  await page.getByRole('button', { name: 'Reenviar código', exact: true }).click();
+  await page.getByLabel('Código de verificação').fill('012345');
+  await expect(page.getByText('Loja preservada', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirmar e Finalizar' }).click();
   await expect(page.getByRole('button', { name: 'Ir para o painel' })).toBeVisible();
+  expect(registros).toBe(2);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('@nhac:usuario') || '{}').papel)).toBe('LOJISTA');
   await page.goto('/configuracoes');
   await expect(page.getByRole('button', { name: 'Nome, categoria e descrição' })).toBeVisible();

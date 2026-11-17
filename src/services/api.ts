@@ -170,10 +170,10 @@ function extrairToken(resposta: {
 
 /**
  * DTO real do backend (RegistroRequestDTO):
- * - id: UUID gerado pelo frontend (@NotBlank)
+ * - id: UUID legado. O backend devolve o ID definitivo em usuarioId.
  * - senha: @Size(min=8) + @Pattern(^(?=.*[0-9])(?=.*[a-zA-Z]).*$)
  * - Não existe campo cpfCnpj no backend.
- * - Requer código de verificação confirmado nos últimos 30 minutos.
+ * - tokenCadastro: prova retornada após confirmar o código de e-mail.
  */
 export interface RegistroRequestDTO {
   id: string;
@@ -181,6 +181,7 @@ export interface RegistroRequestDTO {
   email: string;
   telefone: string;
   senha: string;
+  tokenCadastro: string;
 }
 
 export interface RegistroResponseDTO {
@@ -273,7 +274,7 @@ export async function enviarCodigoCadastro(emailBruto: string): Promise<void> {
 
 /**
  * Confirma e-mail no cadastro
- * POST /auth/confirmar-email-cadastro (público, 200 sem corpo).
+ * POST /auth/confirmar-email-cadastro (público, 200 com tokenCadastro).
  * Spec §3.3: `codigo` é SEMPRE string de 6 dígitos (preserva zeros à
  * esquerda — nunca converter para número). Máx. 5 tentativas: no 5º
  * erro o código é bloqueado → exigir novo envio.
@@ -282,16 +283,20 @@ export async function enviarCodigoCadastro(emailBruto: string): Promise<void> {
 export async function confirmarEmailCadastro(
   emailBruto: string,
   codigoBruto: string,
-): Promise<void> {
+): Promise<string> {
   // Spec §3.3: codigo sempre string de 6 dígitos (zeros à esquerda).
   const email = emailBruto.trim().toLowerCase();
   const codigo = String(codigoBruto ?? "")
     .replace(/\D/g, "")
     .slice(0, 6);
-  return requisicao<void>("/auth/confirmar-email-cadastro", {
+  const resposta = await requisicao<{ tokenCadastro: string }>("/auth/confirmar-email-cadastro", {
     method: "POST",
     body: JSON.stringify({ email, codigo }),
   });
+  if (typeof resposta?.tokenCadastro !== "string" || !resposta.tokenCadastro.trim()) {
+    throw new Error("O servidor não retornou a confirmação do e-mail. Solicite um novo código.");
+  }
+  return resposta.tokenCadastro;
 }
 
 /**
