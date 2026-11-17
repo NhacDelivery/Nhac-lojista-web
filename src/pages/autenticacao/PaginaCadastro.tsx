@@ -17,7 +17,7 @@ import SeletorBannerLoja from '../../components/ui/SeletorBannerLoja';
 import VerificacaoEmail from '../../components/autenticacao/VerificacaoEmail';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
 import { useLoja } from '../../contexts/LojaContext';
-import { emailEstaVerificado, limparEmailVerificado, tratarErroApi } from '../../utils/errosApi';
+import { tratarErroApi } from '../../utils/errosApi';
 import { useToast } from '../../contexts/ToastContext';
 import {
   validarNome,
@@ -141,6 +141,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   const [cpfResponsavel, setCpfResponsavel] = useState('');
   const [nomeCompleto, setNomeCompleto] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmacaoEmail, setConfirmacaoEmail] = useState<{ email: string; tokenCadastro: string } | null>(null);
+  const [verificacaoNaRevisao, setVerificacaoNaRevisao] = useState(false);
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -348,6 +350,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       try {
         setAviso(null);
         await enviarCodigoCadastro(email);
+        setConfirmacaoEmail(null);
+        setVerificacaoNaRevisao(false);
         setEtapaAtual(indices.VERIFICACAO);
         window.scrollTo(0, 0);
       } catch (err) {
@@ -447,6 +451,13 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
     };
   };
 
+  const voltarParaVerificacao = () => {
+    setConfirmacaoEmail(null);
+    setVerificacaoNaRevisao(true);
+    setEtapaAtual(indices.VERIFICACAO);
+    window.scrollTo(0, 0);
+  };
+
   const finalizar = async () => {
     if (finalizando.current) return;
     finalizando.current = true;
@@ -462,8 +473,9 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         return;
       }
       if (modo === 'completo' && !contaCriada) {
-        if (!emailEstaVerificado(email)) {
-          setEtapaAtual(indices.VERIFICACAO);
+        const emailCadastro = normalizarEmail(email);
+        if (confirmacaoEmail?.email !== emailCadastro) {
+          voltarParaVerificacao();
           setErros({ geral: 'Confirme seu e-mail antes de finalizar o cadastro.' });
           return;
         }
@@ -471,9 +483,10 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         const respostaRegistro = await registrar({
           id: gerarUuid(),
           nome: limparTexto(nomeCompleto),
-          email: normalizarEmail(email),
+          email: emailCadastro,
           telefone: soDigitos(telefone),
           senha,
+          tokenCadastro: confirmacaoEmail.tokenCadastro,
         });
 
         // definirSessao já persiste o token em '@nhac:token' — não duplicar.
@@ -493,7 +506,7 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
         });
         setContaCriada(true);
         contaJaCriada = true;
-        limparEmailVerificado();
+        setConfirmacaoEmail(null);
       }
 
       // O upload exige autenticação. A seleção anterior é só uma prévia local.
@@ -542,8 +555,8 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
       ]));
       setErros({ ...campos, geral: tratado.mensagemGeral || 'Revise os dados para continuar.' });
       setErrosTocados(prev => ({ ...prev, ...Object.fromEntries(Object.keys(campos).map(campo => [campo, true])) }));
-      if (tratado.redirecionarVerificacao && indices.VERIFICACAO >= 0) {
-        setEtapaAtual(indices.VERIFICACAO);
+      if (tratado.redirecionarVerificacao && modo === 'completo' && !contaJaCriada) {
+        voltarParaVerificacao();
       } else {
         const campo = Object.keys(campos)[0];
         const etapa = ['nomeCompleto', 'email', 'telefone', 'senha'].includes(campo) && !contaJaCriada ? indices.DADOS
@@ -559,8 +572,12 @@ export default function PaginaCadastro({ modo = 'completo' }: PropsPaginaCadastr
   };
 
 
-  const handleVerificacaoConcluida = () => {
-    setEtapaAtual(indices.LOJA);
+  const handleVerificacaoConcluida = (tokenCadastro: string) => {
+    setConfirmacaoEmail({ email: normalizarEmail(email), tokenCadastro });
+    setEtapaAtual(verificacaoNaRevisao ? indices.REVISAO : indices.LOJA);
+    setVerificacaoNaRevisao(false);
+    setErros({});
+    setAviso(null);
     window.scrollTo(0, 0);
   };
 

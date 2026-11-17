@@ -197,7 +197,9 @@ function interpretarErroApi(erro: unknown): ResultadoTratamentoErro {
     if (
       m.includes("não verificado") ||
       m.includes("nao verificado") ||
-      m.includes("verifique seu e-mail antes")
+      m.includes("verifique seu e-mail antes") ||
+      m.includes("confirme seu e-mail antes") ||
+      m.includes("confirmação de e-mail inválida")
     ) {
       return { redirecionarVerificacao: true, mensagemGeral: mensagem };
     }
@@ -296,18 +298,4 @@ export function tratarErroApi(erro: unknown): ResultadoTratamentoErro {
       ? Object.fromEntries(Object.entries(resultado.errosCampos).map(([campo, msg]) => [campo, mensagemCampo(msg)]))
       : aviso.campos,
   };
-}
-
-export const CHAVE_EMAIL_VERIFICADO = "@nhac:emailVerificado";
-
-export function marcarEmailVerificado(email: string): void {
-  localStorage.setItem(CHAVE_EMAIL_VERIFICADO, email);
-}
-
-export function emailEstaVerificado(email: string): boolean {
-  return localStorage.getItem(CHAVE_EMAIL_VERIFICADO) === email;
-}
-
-export function limparEmailVerificado(): void {
-  localStorage.removeItem(CHAVE_EMAIL_VERIFICADO);
 }
