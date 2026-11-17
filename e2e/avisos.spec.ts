@@ -189,8 +189,12 @@ test('funcionário inexistente bloqueia salvar', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Salvar', exact: true })).toBeDisabled();
 });
 
-test('telefone vazio não avança para SMS e logo usa superfície neutra', async ({ page }) => {
+test('telefone vazio não avança para SMS e a logo preenche o ícone', async ({ page }) => {
   await sessaoLojista(page);
+  await page.route('**/nhac-logo.png', route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80"><rect width="160" height="80" fill="#ff6961"/></svg>',
+  }));
   let sms = 0;
   page.on('request', request => { if (request.url().includes('/verificacao-telefone/enviar-codigo')) sms++; });
   await page.goto('/configuracoes/conta');
@@ -202,8 +206,16 @@ test('telefone vazio não avança para SMS e logo usa superfície neutra', async
   expect(sms).toBe(0);
   const logo = page.getByRole('img', { name: 'Logo de Loja UX' }).first();
   await expect(logo).toBeVisible();
-  expect(await logo.evaluate(el => getComputedStyle(el).objectFit)).toBe('contain');
-  expect(await logo.evaluate(el => getComputedStyle(el.parentElement!).backgroundColor)).toBe('rgb(255, 255, 255)');
+  await expect.poll(() => logo.evaluate(el => (el as HTMLImageElement).naturalWidth)).toBe(160);
+  expect(await logo.evaluate(el => {
+    const imagem = el.getBoundingClientRect();
+    const icone = el.parentElement!.getBoundingClientRect();
+    return {
+      ajuste: getComputedStyle(el).objectFit,
+      ocupaIcone: imagem.x === icone.x && imagem.y === icone.y
+        && imagem.width === icone.width && imagem.height === icone.height,
+    };
+  })).toEqual({ ajuste: 'cover', ocupaIcone: true });
 });
 
 for (const orientacao of ['horizontal', 'vertical'] as const) {

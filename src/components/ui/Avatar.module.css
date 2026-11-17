@@ -42,8 +42,4 @@
   border-radius: var(--raio-pequeno);
   background: var(--nhac-superficie);
   color: var(--nhac-texto);
-  border: 1px solid var(--nhac-borda);
-  padding: 3px;
-  box-sizing: border-box;
 }
-.logo .imagem { object-fit: contain; }
