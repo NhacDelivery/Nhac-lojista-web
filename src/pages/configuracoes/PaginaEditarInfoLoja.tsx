@@ -124,7 +124,7 @@ const PaginaEditarInfoLoja = () => {
                 onChange={handleTrocarFoto}
                 style={{ display: 'none' }}
               />
-              <small>JPG, PNG ou WEBP até 5 MB. A logo aparece inteira sobre fundo branco.</small>
+              <small>JPG, PNG ou WEBP até 5 MB. A imagem preenche o ícone e pode ser recortada nas bordas.</small>
               {erroFoto && (
                 <AvisoFormulario mensagem={erroFoto} />
               )}
