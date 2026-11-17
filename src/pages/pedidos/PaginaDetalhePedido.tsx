@@ -63,19 +63,27 @@ const PaginaDetalhePedido = () => {
   const [confirmacaoAvanco, setConfirmacaoAvanco] = useState<StatusPedido | null>(null);
   const [despachando, setDespachando] = useState(false);
 
-  const carregarPedido = useCallback(async () => {
+  const carregarPedido = useCallback(async (silencioso = false) => {
     if (!id) return;
     try {
-      setCarregando(true);
-      setErro(null);
+      if (!silencioso) {
+        setCarregando(true);
+        setErro(null);
+      }
       const dados = await buscarPedido(id);
-      setPedido(dados);
-      setStatus(dados.status as StatusPedido);
+      if (silencioso) {
+        setPedido(atual => atual?.id === id
+          ? { ...atual, justificativaDesistenciaEntrega: dados.justificativaDesistenciaEntrega }
+          : atual);
+      } else {
+        setPedido(dados);
+        setStatus(dados.status as StatusPedido);
+      }
     } catch (err) {
       const tratado = tratarErroApi(err);
-      setErro(tratado.mensagemGeral ?? "Não foi possível carregar este pedido.");
+      if (!silencioso) setErro(tratado.mensagemGeral ?? "Não foi possível carregar este pedido.");
     } finally {
-      setCarregando(false);
+      if (!silencioso) setCarregando(false);
     }
   }, [id]);
 
@@ -96,6 +104,7 @@ const PaginaDetalhePedido = () => {
       setPedido((pedidoAnterior) =>
         pedidoAnterior ? { ...pedidoAnterior, status: novoStatus } : pedidoAnterior,
       );
+      if (novoStatus === "PREPARANDO") void carregarPedido(true);
     }, () => { void carregarPedido(); });
 
     return () => socket.desconectar();
@@ -247,6 +256,14 @@ const PaginaDetalhePedido = () => {
                     <div className={estilos.divisor} />
                   </React.Fragment>
                 ))}
+                {pedido.justificativaDesistenciaEntrega && (
+                  <>
+                    <p className={estilos.observacoes}>
+                      O entregador anterior desistiu da corrida. Motivo: {pedido.justificativaDesistenciaEntrega}
+                    </p>
+                    <div className={estilos.divisor} />
+                  </>
+                )}
                 {pedido.observacao && (
                   <>
                     <p className={estilos.observacoes}>Obs: {pedido.observacao}</p>
