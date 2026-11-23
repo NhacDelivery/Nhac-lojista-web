@@ -34,6 +34,10 @@ const BarraSuperior: React.FC<BarraSuperiorProps> = ({ titulo, onAbrirMenu, reco
         <div className={estilos.direita}>
           <div className={estilos.conta}>
             <button type="button" aria-label="Opções da conta" aria-expanded={aberto} onClick={() => setAberto(!aberto)} className={estilos.botaoConta}>
+              <span className={estilos.identidade}>
+                <span className={estilos.nome}>{usuario.nomeCompleto}</span>
+                <span className={estilos.cargo}>{usuario.cargo}</span>
+              </span>
               <Avatar tipo="logo" nome={loja?.nome || usuario.nomeCompleto} fotoUrl={loja?.imagemUrl} tamanho="pequeno" />
             </button>
             {aberto && <div className={estilos.menuConta} onKeyDown={(event) => { if (event.key === 'Escape') setAberto(false); }}>

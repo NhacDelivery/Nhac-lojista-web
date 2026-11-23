@@ -142,69 +142,6 @@
   text-overflow: ellipsis;
 }
 
-.rodape {
-  padding: 16px;
-  border-top: 1px solid var(--nhac-borda);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.perfil {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  white-space: nowrap;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: var(--nhac-primaria);
-  color: var(--nhac-sobre-primaria);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.infoUsuario {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.nome {
-  font-weight: 600;
-  color: var(--nhac-texto);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 14px;
-}
-
-.seletorCargo {
-  appearance: none;
-  background-color: var(--nhac-fundo);
-  border: 1px solid var(--nhac-borda);
-  border-radius: var(--raio-pilula);
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--nhac-texto-claro);
-  margin-top: 4px;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
-}
-
-.seletorCargo:hover {
-  border-color: var(--nhac-primaria-claro);
-}
-
-
 @media (max-width: 1024px) {
   .barraLateral {
     transform: translateX(-100%);
