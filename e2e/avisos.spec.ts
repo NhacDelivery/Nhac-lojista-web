@@ -376,7 +376,8 @@ for (const largura of [360, 1280]) {
     await page.setViewportSize({ width: largura, height: 800 });
     await sessaoLojista(page);
     await page.goto('/configuracoes');
-    const conta = page.getByRole('button', { name: 'Opções da conta' });
+    const cabecalho = page.getByRole('banner');
+    const conta = cabecalho.getByRole('button', { name: 'Opções da conta' });
     await expect(conta).toContainText('Dono de teste');
     await expect(conta).toContainText(/administrador/i);
     await expect(page.locator('aside').getByText('Dono de teste')).toHaveCount(0);
@@ -384,7 +385,7 @@ for (const largura of [360, 1280]) {
     await expect(foto).toHaveCSS('object-fit', 'cover');
     await expect(foto).toHaveCSS('padding', '0px');
     await conta.click();
-    await expect(page.getByRole('button', { name: 'Configurações da loja' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sair da conta' })).toBeVisible();
+    await expect(cabecalho.getByRole('button', { name: 'Configurações da loja' })).toBeVisible();
+    await expect(cabecalho.getByRole('button', { name: 'Sair da conta' })).toBeVisible();
   });
 }
