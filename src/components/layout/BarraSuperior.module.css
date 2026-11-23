@@ -4,6 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 0 32px;
   box-shadow: 0 3px 14px rgba(93, 32, 28, 0.07);
   position: sticky;
@@ -12,6 +13,7 @@
 }
 
 .esquerda {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -31,6 +33,9 @@
 }
 
 .titulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 20px;
   font-weight: 600;
   color: var(--nhac-texto);
@@ -40,19 +45,6 @@
 .direita {
   display: flex;
   align-items: center;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: var(--nhac-primaria);
-  color: var(--nhac-sobre-primaria);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
 }
 
 @media (max-width: 1024px) {
@@ -68,7 +60,23 @@
 }
 
 .conta { position: relative; }
-.botaoConta { border: 0; padding: 4px; background: transparent; cursor: pointer; border-radius: 50%; }
+.botaoConta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--nhac-texto);
+  font: inherit;
+  cursor: pointer;
+}
+.botaoConta:hover, .botaoConta:focus-visible { background: var(--nhac-fundo); }
+.identidade { display: grid; text-align: right; max-width: min(30vw, 220px); }
+.nome, .cargo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nome { font-size: 14px; font-weight: 600; }
+.cargo { font-size: 12px; color: var(--nhac-texto-claro); text-transform: capitalize; }
 .menuConta { position: absolute; right: 0; top: calc(100% + 8px); z-index: 50; width: 230px; padding: 8px; background: var(--nhac-fundo, white); border: 1px solid var(--nhac-borda, #eee); border-radius: 14px; box-shadow: 0 8px 28px #0002; }
 .menuConta button { display: block; width: 100%; border: 0; border-radius: 8px; padding: 12px; background: transparent; text-align: left; color: var(--nhac-texto); font: inherit; cursor: pointer; }
 .menuConta button:hover, .menuConta button:focus-visible { background: #fff0ee; }

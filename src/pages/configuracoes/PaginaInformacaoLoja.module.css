@@ -76,20 +76,6 @@
   background-color: var(--nhac-borda);
 }
 
-/* Ajustes da Logo para caber inteira no círculo sem cortar */
-.perfil :global(.avatar) {
-  background-color: var(--nhac-fundo-suave, #f8f9fa);
-  border: 1px solid var(--nhac-borda, #e0e0e0);
-  overflow: hidden;
-}
-
-.perfil img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 6px;
-}
-
 .itemSair {
   color: var(--nhac-erro, #d32f2f);
 }

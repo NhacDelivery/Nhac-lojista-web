@@ -1,5 +1,3 @@
-import { useLoja } from "../../contexts/LojaContext";
-import Avatar from "../ui/Avatar";
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
@@ -84,7 +82,6 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
   onToggleRecolher,
 }) => {
   const { usuario } = useAutenticacao();
-  const { loja } = useLoja();
 
   if (!usuario) return null;
 
@@ -151,21 +148,6 @@ const BarraLateral: React.FC<BarraLateralProps> = ({
         })}
       </nav>
 
-      <div className={estilos.rodape}>
-        <div className={estilos.perfil}>
-          <Avatar tipo="logo"
-            nome={loja?.nome || usuario.nomeCompleto}
-            fotoUrl={loja?.imagemUrl}
-            tamanho="pequeno"
-          />
-          <div className={estilos.infoUsuario}>
-            <span className={estilos.nome}>{usuario.nomeCompleto}</span>
-            <span className={estilos.seletorCargo}>
-              {usuario.cargo.charAt(0).toUpperCase() + usuario.cargo.slice(1)}
-            </span>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 };
